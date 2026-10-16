@@ -1,4 +1,5 @@
 import React from 'react';
+import logo from '../assets/Rankfasta-logo.jpg';
 
 const Footer = () => {
   return (
@@ -8,18 +9,11 @@ const Footer = () => {
         {/* Brand Column */}
         <div className="md:col-span-2">
           <div className="flex items-center gap-3 mb-4">
-            {/* Same Logo SVG */}
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="4" stroke="#0059F7" strokeWidth="2"/>
-              <circle cx="6" cy="10" r="2" stroke="#0059F7" strokeWidth="2"/>
-              <circle cx="26" cy="10" r="2" stroke="#0059F7" strokeWidth="2"/>
-              <circle cx="6" cy="22" r="2" stroke="#0059F7" strokeWidth="2"/>
-              <circle cx="26" cy="22" r="2" stroke="#0059F7" strokeWidth="2"/>
-              <path d="M10 10L14 14" stroke="#0059F7" strokeWidth="2"/>
-              <path d="M22 10L18 14" stroke="#0059F7" strokeWidth="2"/>
-              <path d="M10 22L14 18" stroke="#0059F7" strokeWidth="2"/>
-              <path d="M22 22L18 18" stroke="#0059F7" strokeWidth="2"/>
-            </svg>
+            <img
+              src={logo}
+              alt="Rankfasta logo"
+              className="h-8 w-8 rounded object-contain"
+            />
             <span className="text-xl font-bold text-white tracking-tight">Rankfasta</span>
           </div>
           <p className="text-sm leading-relaxed max-w-sm">
