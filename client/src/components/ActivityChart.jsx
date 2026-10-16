@@ -1,5 +1,6 @@
 import React from 'react'
 import { STATUSES } from '../api/mockData'
+import LineChart from './LineChart'
 
 const COLORS = {
   Pending: '#E0B15A',
@@ -9,15 +10,6 @@ const COLORS = {
 }
 
 const ActivityChart = ({ orders, weekly }) => {
-  const W = 600, H = 170, P = 8
-  const max = Math.max(...weekly)
-  const pts = weekly.map((v, i) => [
-    P + (i * (W - P * 2)) / (weekly.length - 1),
-    H - P - (v / max) * (H - P * 2),
-  ])
-  const line = pts.map((p) => p.join(',')).join(' ')
-  const area = `${P},${H - P} ${line} ${W - P},${H - P}`
-
   return (
     <div className="grid lg:grid-cols-3 gap-4">
       {/* Trend */}
@@ -26,13 +18,7 @@ const ActivityChart = ({ orders, weekly }) => {
           <h2 className="font-semibold text-[#FFFFFF]">Orders completed per week</h2>
           <span className="text-sm text-[#4F5A84]">Last 12 weeks</span>
         </div>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-44" role="img" aria-label="Orders completed per week, trending up">
-          <polygon points={area} fill="#3185F7" opacity="0.12" />
-          <polyline points={line} fill="none" stroke="#3185F7" strokeWidth="2.5" strokeLinejoin="round" />
-          {pts.map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r={i === pts.length - 1 ? 4.5 : 2.5} fill="#3185F7" />
-          ))}
-        </svg>
+        <LineChart points={weekly.map((value, index) => ({ date: index + 1, value }))} label="Orders completed per week, trending up" />
       </div>
 
       {/* Status split */}

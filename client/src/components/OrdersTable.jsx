@@ -24,7 +24,7 @@ const exportCsv = (rows) => {
 }
 
 // `limit` shows a compact "recent orders" version without filters
-const OrdersTable = ({ orders, limit }) => {
+const OrdersTable = ({ orders, limit, onSelect }) => {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('All')
 
@@ -78,7 +78,7 @@ const OrdersTable = ({ orders, limit }) => {
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} className="border-b border-[#232A46] last:border-0 text-[#FFFFFF]">
+              <tr key={o.id} onClick={() => onSelect?.(o)} onKeyDown={(event) => event.key === 'Enter' && onSelect?.(o)} tabIndex={onSelect ? 0 : undefined} className={`border-b border-[#232A46] last:border-0 text-[#FFFFFF] ${onSelect ? 'cursor-pointer hover:bg-[#18213D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0059F7]' : ''}`}>
                 <td className="px-5 py-4 text-[#4F5A84]">{o.id}</td>
                 <td className="px-5 py-4 max-w-[220px] truncate" title={o.service}>{o.service}</td>
                 <td className="px-5 py-4 max-w-[180px] truncate text-[#4F5A84]" title={o.target}>{o.target}</td>
