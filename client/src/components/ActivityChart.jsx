@@ -21,10 +21,10 @@ const ActivityChart = ({ orders, weekly }) => {
   return (
     <div className="grid lg:grid-cols-3 gap-4">
       {/* Trend */}
-      <div className="lg:col-span-2 rounded-xl border border-[#232A46] bg-[#111832] p-5">
+      <div className="lg:col-span-2 rounded-xl border border-[#232A46] bg-[#111832] p-6">
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="font-semibold text-[#FFFFFF]">Orders completed per week</h2>
-          <span className="text-xs text-[#4F5A84]">Last 12 weeks</span>
+          <span className="text-sm text-[#4F5A84]">Last 12 weeks</span>
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-44" role="img" aria-label="Orders completed per week, trending up">
           <polygon points={area} fill="#3185F7" opacity="0.12" />
@@ -36,7 +36,7 @@ const ActivityChart = ({ orders, weekly }) => {
       </div>
 
       {/* Status split */}
-      <div className="rounded-xl border border-[#232A46] bg-[#111832] p-5">
+      <div className="rounded-xl border border-[#232A46] bg-[#111832] p-6">
         <h2 className="font-semibold text-[#FFFFFF] mb-4">Orders by status</h2>
         <div className="flex h-3 rounded-full overflow-hidden bg-[#232A46] mb-5">
           {STATUSES.map((s) => {
@@ -44,7 +44,7 @@ const ActivityChart = ({ orders, weekly }) => {
             return n ? <div key={s} style={{ width: `${(n / orders.length) * 100}%`, background: COLORS[s] }} /> : null
           })}
         </div>
-        <ul className="space-y-3 text-sm">
+        <ul className="space-y-4 text-base">
           {STATUSES.map((s) => (
             <li key={s} className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-[#FFFFFF]">

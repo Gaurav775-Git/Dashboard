@@ -12,15 +12,15 @@ const StatCards = ({ orders }) => {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {stats.map((s) => (
         <div
           key={s.label}
-          className={`rounded-xl border bg-[#111832] p-5 ${s.alert ? 'border-[#F0788C]/60' : 'border-[#232A46]'}`}
+          className={`rounded-xl border bg-[#111832] p-6 ${s.alert ? 'border-[#F0788C]/60' : 'border-[#232A46]'}`}
         >
-          <p className="text-sm text-[#4F5A84]">{s.label}</p>
-          <p className="mt-2 text-3xl font-semibold text-[#FFFFFF]">{s.value}</p>
-          <p className="mt-1 text-xs text-[#4F5A84]">{s.hint}</p>
+          <p className="text-base text-[#4F5A84]">{s.label}</p>
+          <p className="mt-3 text-4xl font-semibold text-[#FFFFFF]">{s.value}</p>
+          <p className="mt-2 text-sm text-[#4F5A84]">{s.hint}</p>
         </div>
       ))}
     </div>
