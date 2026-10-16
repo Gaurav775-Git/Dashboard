@@ -31,30 +31,30 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[linear-gradient(180deg,#0F1B3A_0,#10162B_480px)] flex flex-col">
       <Navbar />
 
-      <main className="flex-grow w-full max-w-7xl mx-auto px-6 md:px-12 py-12">
+      <main className="flex-grow w-full max-w-7xl mx-auto px-6 md:px-12 py-14">
         {/* Page Header */}
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-[#FFFFFF] mb-2">Dashboard</h1>
-            <p className="text-[#4F5A84] text-sm md:text-base">Welcome back. Here's what's happening.</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-[#FFFFFF] mb-3">Dashboard</h1>
+            <p className="text-base md:text-lg text-[#4F5A84]">Welcome back. Here's what's happening.</p>
           </div>
           <button
             onClick={() => setTab('Services')}
-            className="rounded-lg bg-[#0059F7] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1B6DF7]"
+            className="rounded-lg bg-[#0059F7] px-5 py-3 text-base font-medium text-white hover:bg-[#1B6DF7]"
           >
             New order
           </button>
         </div>
 
         {/* Tabs */}
-        <div role="tablist" className="mb-8 flex gap-6 border-b border-[#232A46]">
+        <div role="tablist" className="mb-8 flex gap-8 border-b border-[#232A46]">
           {TABS.map((t) => (
             <button
               key={t}
               role="tab"
               aria-selected={tab === t}
               onClick={() => setTab(t)}
-              className={`pb-3 text-sm -mb-px border-b-2 transition-colors ${
+              className={`pb-4 text-base -mb-px border-b-2 transition-colors ${
                 tab === t
                   ? 'border-[#0059F7] text-[#FFFFFF] font-medium'
                   : 'border-transparent text-[#4F5A84] hover:text-[#FFFFFF]'

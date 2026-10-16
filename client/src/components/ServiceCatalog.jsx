@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { CATEGORIES, SERVICES } from '../api/mockData'
 
 const field =
-  'w-full rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]'
+  'w-full rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]'
 
 const ServiceCatalog = ({ onOrder }) => {
   const [category, setCategory] = useState('All')
@@ -30,7 +30,7 @@ const ServiceCatalog = ({ onOrder }) => {
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className={`rounded-full px-4 py-1.5 text-sm border transition-colors ${
+            className={`rounded-full px-4 py-2 text-base border transition-colors ${
               category === c
                 ? 'bg-[#0059F7] border-[#0059F7] text-white font-medium'
                 : 'border-[#232A46] text-[#4F5A84] hover:text-[#FFFFFF]'
@@ -44,18 +44,18 @@ const ServiceCatalog = ({ onOrder }) => {
       {/* Service cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {list.map((s) => (
-          <div key={s.id} className="flex flex-col rounded-xl border border-[#232A46] bg-[#111832] p-5">
-            <p className="text-xs text-[#4F5A84]">{s.category}</p>
-            <h3 className="mt-1 font-semibold text-[#FFFFFF]">{s.name}</h3>
-            <p className="mt-2 text-sm text-[#4F5A84] flex-grow">{s.desc}</p>
+          <div key={s.id} className="flex flex-col rounded-xl border border-[#232A46] bg-[#111832] p-6">
+            <p className="text-sm text-[#4F5A84]">{s.category}</p>
+            <h3 className="mt-2 text-lg font-semibold text-[#FFFFFF]">{s.name}</h3>
+            <p className="mt-3 text-base leading-relaxed text-[#4F5A84] flex-grow">{s.desc}</p>
             <div className="mt-4 flex items-end justify-between">
               <div>
-                <p className="text-lg font-semibold text-[#FFFFFF]">From ${s.price}</p>
-                <p className="text-xs text-[#4F5A84]">{s.eta}</p>
+                <p className="text-xl font-semibold text-[#FFFFFF]">From ${s.price}</p>
+                <p className="text-sm text-[#4F5A84]">{s.eta}</p>
               </div>
               <button
                 onClick={() => open(s)}
-                className="rounded-lg bg-[#0059F7] px-4 py-2 text-sm font-medium text-white hover:bg-[#1B6DF7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0059F7]"
+                className="rounded-lg bg-[#0059F7] px-4 py-2.5 text-base font-medium text-white hover:bg-[#1B6DF7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0059F7]"
               >
                 Order
               </button>
@@ -76,14 +76,14 @@ const ServiceCatalog = ({ onOrder }) => {
             aria-label={`Order ${selected.name}`}
             onClick={(e) => e.stopPropagation()}
             onSubmit={submit}
-            className="w-full max-w-md rounded-xl border border-[#232A46] bg-[#111832] p-6 space-y-4"
+            className="w-full max-w-md rounded-xl border border-[#232A46] bg-[#111832] p-7 space-y-5"
           >
             <div>
-              <h2 className="text-lg font-semibold text-[#FFFFFF]">{selected.name}</h2>
-              <p className="text-sm text-[#4F5A84]">{selected.desc} Typical delivery: {selected.eta}.</p>
+              <h2 className="text-xl font-semibold text-[#FFFFFF]">{selected.name}</h2>
+              <p className="text-base leading-relaxed text-[#4F5A84]">{selected.desc} Typical delivery: {selected.eta}.</p>
             </div>
 
-            <label className="block text-sm text-[#FFFFFF]">
+            <label className="block text-base text-[#FFFFFF]">
               Website, URL or profile
               <input
                 required
@@ -95,7 +95,7 @@ const ServiceCatalog = ({ onOrder }) => {
               />
             </label>
 
-            <label className="block text-sm text-[#FFFFFF]">
+            <label className="block text-base text-[#FFFFFF]">
               Keywords or notes (optional)
               <textarea
                 rows={3}
@@ -106,7 +106,7 @@ const ServiceCatalog = ({ onOrder }) => {
               />
             </label>
 
-            <label className="block text-sm text-[#FFFFFF]">
+            <label className="block text-base text-[#FFFFFF]">
               Quantity
               <input
                 type="number"
@@ -123,10 +123,10 @@ const ServiceCatalog = ({ onOrder }) => {
                 Total <span className="text-xl font-semibold">${selected.price * (Number(form.qty) || 1)}</span>
               </p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-[#232A46] px-4 py-2 text-sm text-[#FFFFFF] hover:bg-[#232A46]">
+                <button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-[#232A46] px-4 py-2.5 text-base text-[#FFFFFF] hover:bg-[#232A46]">
                   Cancel
                 </button>
-                <button type="submit" className="rounded-lg bg-[#0059F7] px-4 py-2 text-sm font-medium text-white hover:bg-[#1B6DF7]">
+                <button type="submit" className="rounded-lg bg-[#0059F7] px-4 py-2.5 text-base font-medium text-white hover:bg-[#1B6DF7]">
                   Place order
                 </button>
               </div>

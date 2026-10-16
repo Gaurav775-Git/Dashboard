@@ -40,26 +40,26 @@ const OrdersTable = ({ orders, limit }) => {
 
   return (
     <div className="rounded-xl border border-[#232A46] bg-[#111832]">
-      <div className="flex flex-wrap items-center gap-3 p-5">
-        <h2 className="font-semibold text-[#FFFFFF] mr-auto">{limit ? 'Recent orders' : 'All orders'}</h2>
+      <div className="flex flex-wrap items-center gap-4 p-6">
+        <h2 className="text-lg font-semibold text-[#FFFFFF] mr-auto">{limit ? 'Recent orders' : 'All orders'}</h2>
         {!limit && (
           <>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by order, service or URL"
-              className="w-full sm:w-64 rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]"
+              className="w-full sm:w-72 rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]"
             />
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2 text-sm text-[#FFFFFF] focus:outline-none focus:border-[#0059F7]"
+              className="rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] focus:outline-none focus:border-[#0059F7]"
             >
               {['All', ...STATUSES].map((s) => <option key={s}>{s}</option>)}
             </select>
             <button
               onClick={() => exportCsv(rows)}
-              className="rounded-lg border border-[#232A46] px-3 py-2 text-sm text-[#FFFFFF] hover:bg-[#232A46] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0059F7]"
+              className="rounded-lg border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] hover:bg-[#232A46] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0059F7]"
             >
               Export CSV
             </button>
@@ -68,30 +68,30 @@ const OrdersTable = ({ orders, limit }) => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="w-full text-base min-w-[720px]">
           <thead>
             <tr className="text-left text-[#4F5A84] border-y border-[#232A46]">
               {['Order', 'Service', 'Target', 'Date', 'Status', 'Progress', 'Amount'].map((h) => (
-                <th key={h} className="px-5 py-3 font-medium">{h}</th>
+                <th key={h} className="px-5 py-4 font-medium">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((o) => (
               <tr key={o.id} className="border-b border-[#232A46] last:border-0 text-[#FFFFFF]">
-                <td className="px-5 py-3 text-[#4F5A84]">{o.id}</td>
-                <td className="px-5 py-3 max-w-[220px] truncate" title={o.service}>{o.service}</td>
-                <td className="px-5 py-3 max-w-[180px] truncate text-[#4F5A84]" title={o.target}>{o.target}</td>
-                <td className="px-5 py-3 text-[#4F5A84] whitespace-nowrap">{o.date}</td>
-                <td className="px-5 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${BADGE[o.status]}`}>{o.status}</span>
+                <td className="px-5 py-4 text-[#4F5A84]">{o.id}</td>
+                <td className="px-5 py-4 max-w-[220px] truncate" title={o.service}>{o.service}</td>
+                <td className="px-5 py-4 max-w-[180px] truncate text-[#4F5A84]" title={o.target}>{o.target}</td>
+                <td className="px-5 py-4 text-[#4F5A84] whitespace-nowrap">{o.date}</td>
+                <td className="px-5 py-4">
+                  <span className={`rounded-full px-2.5 py-1 text-sm font-medium whitespace-nowrap ${BADGE[o.status]}`}>{o.status}</span>
                 </td>
-                <td className="px-5 py-3 w-36">
+                <td className="px-5 py-4 w-36">
                   <div className="h-1.5 rounded-full bg-[#232A46]">
                     <div className="h-full rounded-full" style={{ width: `${o.progress}%`, background: BAR[o.status] }} />
                   </div>
                 </td>
-                <td className="px-5 py-3 text-right">${o.amount}</td>
+                <td className="px-5 py-4 text-right">${o.amount}</td>
               </tr>
             ))}
             {rows.length === 0 && (
