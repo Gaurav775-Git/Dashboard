@@ -1,25 +1,15 @@
 import React, { useState } from 'react'
 import { CATEGORIES, SERVICES } from '../api/mockData'
-
-const field =
-  'w-full rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]'
+import OrderForm from './OrderForm'
 
 const ServiceCatalog = ({ onOrder }) => {
   const [category, setCategory] = useState('All')
   const [selected, setSelected] = useState(null)
-  const [form, setForm] = useState({ target: '', notes: '', qty: 1 })
 
   const list = SERVICES.filter((s) => category === 'All' || s.category === category)
 
   const open = (s) => {
     setSelected(s)
-    setForm({ target: '', notes: '', qty: 1 })
-  }
-
-  const submit = (e) => {
-    e.preventDefault()
-    onOrder({ service: selected, ...form, qty: Number(form.qty) || 1 })
-    setSelected(null)
   }
 
   return (
@@ -64,76 +54,7 @@ const ServiceCatalog = ({ onOrder }) => {
         ))}
       </div>
 
-      {/* Order modal */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setSelected(null)}
-        >
-          <form
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Order ${selected.name}`}
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={submit}
-            className="w-full max-w-md rounded-xl border border-[#232A46] bg-[#111832] p-7 space-y-5"
-          >
-            <div>
-              <h2 className="text-xl font-semibold text-[#FFFFFF]">{selected.name}</h2>
-              <p className="text-base leading-relaxed text-[#4F5A84]">{selected.desc} Typical delivery: {selected.eta}.</p>
-            </div>
-
-            <label className="block text-base text-[#FFFFFF]">
-              Website, URL or profile
-              <input
-                required
-                autoFocus
-                className={`${field} mt-1`}
-                placeholder="https://yoursite.com/page"
-                value={form.target}
-                onChange={(e) => setForm({ ...form, target: e.target.value })}
-              />
-            </label>
-
-            <label className="block text-base text-[#FFFFFF]">
-              Keywords or notes (optional)
-              <textarea
-                rows={3}
-                className={`${field} mt-1`}
-                placeholder="Target keywords, location, anything we should know"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </label>
-
-            <label className="block text-base text-[#FFFFFF]">
-              Quantity
-              <input
-                type="number"
-                min="1"
-                max="100"
-                className={`${field} mt-1`}
-                value={form.qty}
-                onChange={(e) => setForm({ ...form, qty: e.target.value })}
-              />
-            </label>
-
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-[#FFFFFF]">
-                Total <span className="text-xl font-semibold">${selected.price * (Number(form.qty) || 1)}</span>
-              </p>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-[#232A46] px-4 py-2.5 text-base text-[#FFFFFF] hover:bg-[#232A46]">
-                  Cancel
-                </button>
-                <button type="submit" className="rounded-lg bg-[#0059F7] px-4 py-2.5 text-base font-medium text-white hover:bg-[#1B6DF7]">
-                  Place order
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      {selected && <OrderForm service={selected} onClose={() => setSelected(null)} onSubmit={(form) => { onOrder({ service: selected, ...form }); setSelected(null) }} />}
     </div>
   )
 }

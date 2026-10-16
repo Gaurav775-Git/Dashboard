@@ -6,22 +6,30 @@ import ActivityChart from '../components/ActivityChart'
 import OrdersTable from '../components/OrdersTable'
 import ServiceCatalog from '../components/ServiceCatalog'
 import { INITIAL_ORDERS, WEEKLY_COMPLETED } from '../api/mockData'
+import OrderDetail from '../components/OrderDetail'
 
 const TABS = ['Overview', 'Services', 'Orders']
 
 const Dashboard = () => {
   const [tab, setTab] = useState('Overview')
   const [orders, setOrders] = useState(INITIAL_ORDERS)
+  const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const placeOrder = ({ service, target, qty }) => {
+  const placeOrder = ({ service, answers, qty }) => {
+    const target = answers.target || answers.urls?.[0] || service.name
     const next = {
       id: `ORD-${1042 + orders.length - INITIAL_ORDERS.length}`,
+      serviceId: service.id,
       service: service.name,
-      target,
+      target: Array.isArray(target) ? target[0] : target || service.name,
       date: new Date().toISOString().slice(0, 10),
       status: 'Pending',
       progress: 0,
       amount: service.price * qty,
+      answers,
+      tracking: [],
+      notes: [],
+      source: service.source,
     }
     setOrders([next, ...orders])
     setTab('Orders') // show the new order straight away
@@ -32,6 +40,17 @@ const Dashboard = () => {
       <Navbar />
 
       <main className="flex-grow w-full max-w-7xl mx-auto px-6 md:px-12 py-14">
+        {selectedOrder ? (
+          <OrderDetail
+            order={selectedOrder}
+            onBack={() => setSelectedOrder(null)}
+            onAddTracking={(orderId, point) => {
+              setOrders((current) => current.map((order) => order.id === orderId ? { ...order, tracking: [...(order.tracking || []), point] } : order))
+              setSelectedOrder((current) => ({ ...current, tracking: [...(current.tracking || []), point] }))
+            }}
+          />
+        ) : (
+        <>
         {/* Page Header */}
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -70,12 +89,14 @@ const Dashboard = () => {
             <>
               <StatCards orders={orders} />
               <ActivityChart orders={orders} weekly={WEEKLY_COMPLETED} />
-              <OrdersTable orders={orders} limit={5} />
+              <OrdersTable orders={orders} limit={5} onSelect={setSelectedOrder} />
             </>
           )}
           {tab === 'Services' && <ServiceCatalog onOrder={placeOrder} />}
-          {tab === 'Orders' && <OrdersTable orders={orders} />}
+          {tab === 'Orders' && <OrdersTable orders={orders} onSelect={setSelectedOrder} />}
         </div>
+        </>
+        )}
       </main>
 
       <Footer />
