@@ -1,4 +1,3 @@
-import React from 'react'
 
 const StatCards = ({ orders }) => {
   const count = (...s) => orders.filter((o) => s.includes(o.status)).length

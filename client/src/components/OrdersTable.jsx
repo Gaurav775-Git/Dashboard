@@ -1,111 +1,31 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { STATUSES } from '../api/mockData'
+import Card from './ui/Card'
+import Pill from './ui/Pill'
+import EmptyState from './ui/EmptyState'
 
-const BADGE = {
-  Pending: 'bg-[#E0B15A]/15 text-[#E0B15A]',
-  'In progress': 'bg-[#54ABF8]/15 text-[#54ABF8]',
-  Completed: 'bg-[#4FC9A0]/15 text-[#4FC9A0]',
-  'Needs info': 'bg-[#F0788C]/15 text-[#F0788C]',
-}
-const BAR = {
-  Pending: '#E0B15A', 'In progress': '#54ABF8', Completed: '#4FC9A0', 'Needs info': '#F0788C',
-}
-
+const BAR = { Pending: '#E0B15A', 'In progress': '#54ABF8', Completed: '#4FC9A0', 'Needs info': '#F0788C' }
 const exportCsv = (rows) => {
   const head = ['Order', 'Service', 'Target', 'Date', 'Status', 'Progress %', 'Amount (USD)']
-  const esc = (v) => `"${String(v).replace(/"/g, '""')}"`
-  const body = rows.map((o) => [o.id, o.service, o.target, o.date, o.status, o.progress, o.amount].map(esc).join(','))
+  const esc = (value) => `"${String(value).replace(/"/g, '""')}"`
+  const body = rows.map((order) => [order.id, order.service, order.target, order.date, order.status, order.progress, order.amount].map(esc).join(','))
   const blob = new Blob([[head.join(','), ...body].join('\n')], { type: 'text/csv' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = 'orders.csv'
-  a.click()
-  URL.revokeObjectURL(a.href)
+  const anchor = document.createElement('a'); anchor.href = URL.createObjectURL(blob); anchor.download = 'orders.csv'; anchor.click(); URL.revokeObjectURL(anchor.href)
 }
 
-// `limit` shows a compact "recent orders" version without filters
-const OrdersTable = ({ orders, limit, onSelect }) => {
+const OrdersTable = ({ orders, limit, onSelect, compact = false }) => {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('All')
-
   const rows = useMemo(() => {
     if (limit) return orders.slice(0, limit)
     const q = query.toLowerCase()
-    return orders.filter(
-      (o) =>
-        (status === 'All' || o.status === status) &&
-        [o.id, o.service, o.target].some((v) => v.toLowerCase().includes(q))
-    )
+    return orders.filter((order) => (status === 'All' || order.status === status) && [order.id, order.service, order.target].some((value) => value.toLowerCase().includes(q)))
   }, [orders, query, status, limit])
-
-  return (
-    <div className="rounded-xl border border-[#232A46] bg-[#111832]">
-      <div className="flex flex-wrap items-center gap-4 p-6">
-        <h2 className="text-lg font-semibold text-[#FFFFFF] mr-auto">{limit ? 'Recent orders' : 'All orders'}</h2>
-        {!limit && (
-          <>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by order, service or URL"
-              className="w-full sm:w-72 rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] placeholder-[#4F5A84] focus:outline-none focus:border-[#0059F7]"
-            />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg bg-[#10162B] border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] focus:outline-none focus:border-[#0059F7]"
-            >
-              {['All', ...STATUSES].map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <button
-              onClick={() => exportCsv(rows)}
-              className="rounded-lg border border-[#232A46] px-3 py-2.5 text-base text-[#FFFFFF] hover:bg-[#232A46] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0059F7]"
-            >
-              Export CSV
-            </button>
-          </>
-        )}
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-base min-w-[720px]">
-          <thead>
-            <tr className="text-left text-[#4F5A84] border-y border-[#232A46]">
-              {['Order', 'Service', 'Target', 'Date', 'Status', 'Progress', 'Amount'].map((h) => (
-                <th key={h} className="px-5 py-4 font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((o) => (
-              <tr key={o.id} onClick={() => onSelect?.(o)} onKeyDown={(event) => event.key === 'Enter' && onSelect?.(o)} tabIndex={onSelect ? 0 : undefined} className={`border-b border-[#232A46] last:border-0 text-[#FFFFFF] ${onSelect ? 'cursor-pointer hover:bg-[#18213D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0059F7]' : ''}`}>
-                <td className="px-5 py-4 text-[#4F5A84]">{o.id}</td>
-                <td className="px-5 py-4 max-w-[220px] truncate" title={o.service}>{o.service}</td>
-                <td className="px-5 py-4 max-w-[180px] truncate text-[#4F5A84]" title={o.target}>{o.target}</td>
-                <td className="px-5 py-4 text-[#4F5A84] whitespace-nowrap">{o.date}</td>
-                <td className="px-5 py-4">
-                  <span className={`rounded-full px-2.5 py-1 text-sm font-medium whitespace-nowrap ${BADGE[o.status]}`}>{o.status}</span>
-                </td>
-                <td className="px-5 py-4 w-36">
-                  <div className="h-1.5 rounded-full bg-[#232A46]">
-                    <div className="h-full rounded-full" style={{ width: `${o.progress}%`, background: BAR[o.status] }} />
-                  </div>
-                </td>
-                <td className="px-5 py-4 text-right">${o.amount}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-[#4F5A84]">
-                  No orders match. Clear the search or pick another status.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+  if (compact) return <div>{rows.map((order) => <button type="button" key={order.id} onClick={() => onSelect?.(order)} className="flex w-full items-center gap-3 border-b border-rf-border px-5 py-4 text-left last:border-0 hover:bg-rf-surface-soft"><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-rf-text">{order.service}</span><span className="mt-1 block text-xs text-rf-muted">{order.id} · {order.target}</span></span><Pill status={order.status} /></button>)}{!rows.length && <EmptyState title="No orders yet" description="Your latest orders will show up here." icon="＋" />}</div>
+  return <Card className="overflow-hidden">
+    <div className="flex flex-wrap items-center gap-3 p-5"><div className="mr-auto"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Order workspace</p><h2 className="mt-2 text-xl font-semibold text-rf-text">All orders</h2></div><input aria-label="Search orders" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search orders" className="w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-2.5 text-sm text-rf-text placeholder:text-rf-muted focus:border-rf-primary focus:outline-none sm:w-56" /><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-rf-border bg-rf-bg px-3 py-2.5 text-sm text-rf-text focus:border-rf-primary focus:outline-none">{['All', ...STATUSES].map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => exportCsv(rows)} className="rounded-lg border border-rf-border px-3 py-2.5 text-sm font-semibold text-rf-text hover:bg-rf-surface-soft">Export CSV</button></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-y border-rf-border text-left text-xs uppercase tracking-[0.08em] text-rf-muted">{['Order', 'Service', 'Target', 'Date', 'Status', 'Progress', 'Amount'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold">{heading}</th>)}</tr></thead><tbody>{rows.map((order) => <tr key={order.id} onClick={() => onSelect?.(order)} onKeyDown={(event) => event.key === 'Enter' && onSelect?.(order)} tabIndex={onSelect ? 0 : undefined} className={`border-b border-rf-border last:border-0 ${onSelect ? 'cursor-pointer hover:bg-rf-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-primary' : ''}`}><td className="px-5 py-4 text-rf-muted">{order.id}</td><td className="max-w-[220px] truncate px-5 py-4 text-rf-text">{order.service}</td><td className="max-w-[180px] truncate px-5 py-4 text-rf-muted">{order.target}</td><td className="whitespace-nowrap px-5 py-4 text-rf-muted">{order.date}</td><td className="px-5 py-4"><Pill status={order.status} /></td><td className="w-36 px-5 py-4"><div className="h-1.5 rounded-full bg-rf-border"><div className="h-full rounded-full" style={{ width: `${order.progress}%`, background: BAR[order.status] }} /></div></td><td className="px-5 py-4 text-right text-rf-text">${order.amount}</td></tr>)}{!rows.length && <tr><td colSpan={7}><EmptyState title="No matching orders" description="Clear the search or choose another status." /></td></tr>}</tbody></table></div>
+  </Card>
 }
 
 export default OrdersTable
