@@ -1,1 +1,69 @@
 @import "tailwindcss";
+
+@theme {
+  --color-rf-nav: #111832;
+  --color-rf-bg: #10162B;
+  --color-rf-border: #232A46;
+  --color-rf-surface: #1C2540;
+  --color-rf-surface-soft: #18213D;
+  --color-rf-muted: #4F5A84;
+  --color-rf-text: #FFFFFF;
+  --color-rf-primary: #0059F7;
+  --color-rf-primary-hover: #1B6DF7;
+  --color-rf-blue: #3185F7;
+  --color-rf-blue-light: #54ABF8;
+  --color-rf-success: #4FC9A0;
+  --color-rf-warning: #E0B15A;
+  --color-rf-danger: #F0788C;
+  --color-rf-purple: #8900ff;
+  --color-rf-purple-light: #9135ff;
+  --color-rf-cyan: #00c2ff;
+  --color-rf-cyan-light: #00D8FF;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #FFFFFF;
+  background: #10162B;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  border-color: #232A46;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: #10162B;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #54ABF8;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

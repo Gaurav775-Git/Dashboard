@@ -1,4 +1,3 @@
-import React from 'react'
 
 const Notes = ({ notes = [] }) => (
   <section className="rounded-xl border border-[#232A46] bg-[#111832] p-6">

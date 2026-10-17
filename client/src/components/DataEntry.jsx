@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 const DataEntry = ({ onAdd }) => {
   const [value, setValue] = useState('')
