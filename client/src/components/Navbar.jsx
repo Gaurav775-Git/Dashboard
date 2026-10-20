@@ -32,7 +32,7 @@ const Navbar = ({ activeTab = 'Overview', onNavigate }) => {
         {links.map(([tab, label, icon]) => <button key={tab} type="button" onClick={() => navigate(tab)} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium ${activeTab === tab || (tab === 'Projects' && activeTab === 'Orders') ? 'bg-rf-primary/15 text-rf-text' : 'text-rf-muted hover:bg-rf-surface-soft hover:text-rf-text'}`}><span className="w-5 text-center text-base text-rf-blue-light">{icon}</span>{label}{tab === 'Messages' && <span className="ml-auto rounded-full bg-rf-primary px-2 py-0.5 text-[10px] text-rf-text">2</span>}</button>)}
       </div>
       <div className="hidden border-t border-rf-border pt-4 md:block">
-        <div className="flex items-center gap-3 px-2"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-rf-blue text-sm font-bold text-rf-text">GS</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-rf-text">Gaurav Sharma</p><p className="text-xs text-rf-muted">Client account</p></div></div>
+        <div className="flex items-center gap-3 px-2"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-rf-blue text-sm font-bold text-rf-text">GS</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-rf-text">User 1</p><p className="text-xs text-rf-muted">Client account</p></div></div>
       </div>
     </nav>
   )
