@@ -1,31 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-rf-nav: #111832;
-  --color-rf-bg: #10162B;
-  --color-rf-border: #232A46;
-  --color-rf-surface: #1C2540;
-  --color-rf-surface-soft: #18213D;
-  --color-rf-muted: #4F5A84;
+  --color-rf-nav: #071536;
+  --color-rf-bg: #030A24;
+  --color-rf-border: rgba(8,114,255,0.20);
+  --color-rf-surface: #071536;
+  --color-rf-surface-2: #0A1A40;
+  --color-rf-surface-soft: #0A1A40;
+  --color-rf-muted: #8FA3C7;
   --color-rf-text: #FFFFFF;
-  --color-rf-primary: #0059F7;
-  --color-rf-primary-hover: #1B6DF7;
-  --color-rf-blue: #3185F7;
-  --color-rf-blue-light: #54ABF8;
-  --color-rf-success: #4FC9A0;
-  --color-rf-warning: #E0B15A;
-  --color-rf-danger: #F0788C;
-  --color-rf-purple: #8900ff;
-  --color-rf-purple-light: #9135ff;
-  --color-rf-cyan: #00c2ff;
-  --color-rf-cyan-light: #00D8FF;
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --color-rf-primary: #0872FF;
+  --color-rf-primary-hover: #3B97FF;
+  --color-rf-blue: #0872FF;
+  --color-rf-blue-light: #3B97FF;
+  --color-rf-primary-light: #3B97FF;
+  --color-rf-primary-lighter: #7CC4FF;
+  --color-rf-success: #22C55E;
+  --color-rf-warning: #F5A524;
+  --color-rf-danger: #EF4444;
+  --font-sans: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: #FFFFFF;
-  background: #10162B;
+  background: #030A24;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -37,7 +36,7 @@
 body {
   min-width: 320px;
   margin: 0;
-  background: #10162B;
+  background: #030A24;
 }
 
 button,
