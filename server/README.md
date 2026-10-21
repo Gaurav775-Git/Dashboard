@@ -26,11 +26,11 @@ TRUST_PROXY=true
 Configure the Vercel project with:
 
 ```env
-VITE_API_URL=https://dashboard-sj7c.onrender.com/api
+VITE_API_URL=/api
 VITE_USE_MOCK=true
 ```
 
-`COOKIE_SAME_SITE=none` is required because the Vercel and Render deployments are on different sites. Leave `COOKIE_DOMAIN` empty unless both services are moved under the same custom parent domain.
+The repository-root `vercel.json` rewrites `/api/*` to the Render API, so browser requests remain same-origin with the Vercel frontend. Keep `COOKIE_DOMAIN` empty unless both services are moved under the same custom parent domain. `COOKIE_SAME_SITE=lax` is sufficient for the same-origin rewrite.
 
 ## Endpoints
 
