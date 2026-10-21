@@ -1,5 +1,5 @@
 import { env } from '../config/env.js'
-const base = { httpOnly: true, secure: env.COOKIE_SECURE, sameSite: 'lax', domain: env.COOKIE_DOMAIN || undefined }
+const base = { httpOnly: true, secure: env.COOKIE_SECURE, sameSite: env.COOKIE_SAME_SITE, domain: env.COOKIE_DOMAIN || undefined }
 export const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('access_token', accessToken, { ...base, path: '/', maxAge: 900000 })
   res.cookie('refresh_token', refreshToken, { ...base, path: '/api/auth', maxAge: env.REFRESH_TOKEN_TTL_DAYS * 86400000 })

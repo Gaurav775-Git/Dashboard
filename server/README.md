@@ -11,6 +11,27 @@ npm run dev
 
 The API listens on `PORT` (default `5000`). In development, email links are logged to the server console unless SMTP is configured.
 
+### Deployed frontend
+
+For the Render service used by the Vercel frontend, configure these environment variables:
+
+```env
+NODE_ENV=production
+CLIENT_URL=https://rankfasta-dashboard.vercel.app
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=none
+TRUST_PROXY=true
+```
+
+Configure the Vercel project with:
+
+```env
+VITE_API_URL=https://dashboard-sj7c.onrender.com/api
+VITE_USE_MOCK=true
+```
+
+`COOKIE_SAME_SITE=none` is required because the Vercel and Render deployments are on different sites. Leave `COOKIE_DOMAIN` empty unless both services are moved under the same custom parent domain.
+
 ## Endpoints
 
 All mutation requests require `X-Requested-With: XMLHttpRequest` and an `Origin` matching `CLIENT_URL`.

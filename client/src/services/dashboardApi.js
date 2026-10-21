@@ -1,8 +1,9 @@
 import { actions, campaigns, channels, kpis, serviceTiles, visibilityData } from '../data/dashboard'
+import { api } from '../lib/api'
 
 const defaultTasks = actions.map((item, index) => ({ ...item, id: `task-${index + 1}`, done: false, href: '/projects' }))
 
-export const getDashboard = async () => ({
+const mockDashboard = async () => ({
   overall: { score: visibilityData.at(-1), delta: 12.6, series: visibilityData },
   kpis,
   campaigns,
@@ -16,4 +17,10 @@ export const getDashboard = async () => ({
   totals: { services: 17 },
 })
 
-export const updateTask = async (id, done) => ({ id, done })
+export const getDashboard = () => import.meta.env.VITE_USE_MOCK === 'false'
+  ? api.get('/dashboard').then((response) => response.data.data)
+  : mockDashboard()
+
+export const updateTask = (id, done) => import.meta.env.VITE_USE_MOCK === 'false'
+  ? api.patch(`/dashboard/tasks/${id}`, { done }).then((response) => response.data.data)
+  : Promise.resolve({ id, done })
