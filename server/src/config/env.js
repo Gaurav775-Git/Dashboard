@@ -11,6 +11,7 @@ const schema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(14),
   COOKIE_DOMAIN: z.string().optional().or(z.literal('')),
   COOKIE_SECURE: z.coerce.boolean().default(false),
+  COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   REQUIRE_EMAIL_VERIFICATION: z.coerce.boolean().default(false),
   TRUST_PROXY: z.coerce.boolean().default(false),
   SMTP_HOST: z.string().optional().or(z.literal('')),
