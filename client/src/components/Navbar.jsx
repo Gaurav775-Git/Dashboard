@@ -1,4 +1,6 @@
 import logo from '../assets/Rankfasta-logo.jpg'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 const links = [
   ['Overview', '⌂', '/'],
@@ -10,12 +12,16 @@ const links = [
 ]
 
 const Navbar = ({ activeTab = 'Overview', onNavigate }) => {
+  const { user, logout } = useAuth()
+  const navigateRouter = useNavigate()
+  const displayName = user?.name || 'Rankfasta user'
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
   const navigate = (tab, path) => {
     if (onNavigate && path === '/services') {
       onNavigate('Services')
       return
     }
-    window.location.assign(path)
+    navigateRouter(path)
   }
 
   return (
@@ -29,7 +35,7 @@ const Navbar = ({ activeTab = 'Overview', onNavigate }) => {
         <div className="my-4 hidden border-t border-rf-border md:block" />
         {[['Billing', '$', '/billing'], ['Help Center', '?', '/help']].map(([tab, icon, path]) => <button key={tab} type="button" onClick={() => navigate(tab, path)} className={`hidden h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium hover:bg-rf-surface-2 hover:text-rf-text md:flex ${activeTab === tab ? 'border border-rf-primary bg-rf-primary/15 text-rf-text' : 'text-rf-muted'}`}><span className="w-5 text-center text-lg text-rf-blue-light">{icon}</span>{tab}</button>)}
       </div>
-      <div className="hidden items-center gap-3 border-t border-rf-border px-2 pt-5 md:flex"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-rf-primary text-sm font-bold text-rf-text">AC</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-rf-text">Alex Carter</p><p className="text-xs text-rf-muted">Client</p></div><span className="ml-auto text-rf-muted">⌄</span></div>
+      <div className="hidden items-center gap-3 border-t border-rf-border px-2 pt-5 md:flex"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-rf-primary text-sm font-bold text-rf-text">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-rf-text">{displayName}</p><p className="text-xs text-rf-muted">Client</p></div><button type="button" onClick={() => logout().then(() => navigateRouter('/login', { replace: true }))} className="ml-auto text-xs text-rf-muted hover:text-rf-text">Log out</button></div>
     </nav>
   )
 }
