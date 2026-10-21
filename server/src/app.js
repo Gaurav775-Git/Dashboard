@@ -6,7 +6,6 @@ import hpp from 'hpp'
 import mongoSanitize from 'express-mongo-sanitize'
 import pinoHttp from 'pino-http'
 import authRoutes from './routes/auth.routes.js'
-import { csrf } from './middleware/csrf.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { notFound } from './middleware/notFound.js'
 
@@ -51,15 +50,6 @@ app.use(
     ],
   })
 )
-
-// These endpoints are intentionally callable before an authenticated session
-// exists. All other state-changing routes remain protected by CSRF checks.
-const csrfExemptPaths = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/register', '/api/health'])
-const csrfForAuthenticatedRoutes = (req, res, next) => {
-  if (csrfExemptPaths.has(req.path)) return next()
-  return csrf(req, res, next)
-}
-app.use(csrfForAuthenticatedRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) =>
