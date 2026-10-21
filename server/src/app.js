@@ -52,8 +52,14 @@ app.use(
   })
 )
 
-// CSRF protection
-app.use(csrf)
+// These endpoints are intentionally callable before an authenticated session
+// exists. All other state-changing routes remain protected by CSRF checks.
+const csrfExemptPaths = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/register', '/api/health'])
+const csrfForAuthenticatedRoutes = (req, res, next) => {
+  if (csrfExemptPaths.has(req.path)) return next()
+  return csrf(req, res, next)
+}
+app.use(csrfForAuthenticatedRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) =>
