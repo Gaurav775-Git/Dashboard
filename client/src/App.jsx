@@ -11,9 +11,12 @@ import BingRankingTracking from './pages/BingRankingTracking'
 import GenericServiceOrder from './pages/GenericServiceOrder'
 import GenericServiceTracking from './pages/GenericServiceTracking'
 import { GENERIC_SERVICE_CONFIGS } from './config/serviceConfigs'
+import ComingSoon from './pages/ComingSoon'
 
 const App = () => {
   const path = window.location.pathname
+  const sections = { '/projects': 'Projects', '/performance': 'Performance', '/ai-visibility': 'AI Visibility', '/reports': 'Reports', '/messages': 'Messages', '/billing': 'Billing', '/help': 'Help Center' }
+  if (sections[path]) return <ComingSoon section={sections[path]} />
   if (path === '/services/google-indexing/order') return <GoogleIndexingOrder />
   if (path.startsWith('/services/google-indexing/order/confirmation/')) return <OrderConfirmation orderId={path.split('/').pop()} />
   if (path.startsWith('/projects/google-indexing/')) return <GoogleIndexingTracking />
