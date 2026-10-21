@@ -1,2 +1,2 @@
-import { env } from '../config/env.js'
-export const csrf = (req, res, next) => { if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) return next(); const origin = req.get('origin'); if (req.get('x-requested-with') !== 'XMLHttpRequest' || (origin && origin !== env.CLIENT_URL)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Request origin is not allowed.' } }); next() }
+import { clientUrls, normalizeOrigin } from '../config/env.js'
+export const csrf = (req, res, next) => { if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) return next(); const origin = req.get('origin'); const normalizedOrigin = origin ? normalizeOrigin(origin) : ''; if (req.get('x-requested-with') !== 'XMLHttpRequest' || (normalizedOrigin && !clientUrls.includes(normalizedOrigin))) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Request origin is not allowed.' } }); next() }

@@ -6,7 +6,7 @@ let refreshPromise = null
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
-  timeout: 15000,
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
 })
 
@@ -28,11 +28,12 @@ api.interceptors.response.use(
     }
     const response = error.response
     const backend = response?.data?.error
+    const isBackendEnvelope = response?.data?.success === false && backend && typeof backend === 'object'
     throw {
       status: response?.status,
-      code: backend?.code,
-      message: backend?.message,
-      details: backend?.details,
+      code: isBackendEnvelope ? backend.code : 'SERVER_UNREACHABLE',
+      message: isBackendEnvelope ? backend.message : "Can't reach the server. Please try again.",
+      details: isBackendEnvelope ? backend.details : undefined,
       retryAfter: response?.headers?.['retry-after'],
     }
   },
