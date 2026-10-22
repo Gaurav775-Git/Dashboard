@@ -8,35 +8,62 @@ import pinoHttp from 'pino-http'
 import authRoutes from './routes/auth.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { notFound } from './middleware/notFound.js'
+import { env } from './config/env.js'
 
 const app = express()
 
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
 
-// Open CORS for all origins (with credentials support)
+// ─── CORS: MUST allow credentials for cookies ───────────────────────
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+].filter(Boolean)
+
 const corsOptions = {
-  origin: true, // reflect any origin
-  credentials: true, // allow cookies / auth headers
+  origin(origin, callback) {
+    // allow server-to-server / curl / same-origin (no origin header)
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    // dev convenience: allow any localhost / 127.0.0.1 port
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true)
+    }
+    return callback(new Error(`CORS blocked: ${origin}`))
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400,
 }
 
-// Security & parsing
+// Order matters:
+// 1) CORS first so preflight & errors get CORS headers
+app.use(cors(corsOptions))
+app.options(/.*/, cors(corsOptions)) // Express 5-safe preflight for all routes
+
+// 2) helmet AFTER cors so it doesn't strip CORS headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenedPolicy: false,
+    contentSecurityPolicy: false, // API — no CSP needed; adjust if serving HTML
   })
 )
 
-app.use(cors(corsOptions))
-// No need for app.options('*', cors(...)) — cors() handles preflight automatically
-// and '*' as a path breaks in Express 5.
+// 3) sanitize BEFORE body parsing (works with query/params/body on newer versions)
+app.use(mongoSanitize())
 
+// 4) parsers
 app.use(express.json({ limit: '10kb' }))
+app.use(express.urlencoded({ extended: true, limit: '10kb' }))
 app.use(cookieParser())
 app.use(hpp())
-app.use(mongoSanitize())
 
 app.use(
   pinoHttp({
@@ -51,18 +78,12 @@ app.use(
   })
 )
 
-// Health check
 app.get('/api/health', (_req, res) =>
-  res.json({
-    success: true,
-    data: { uptime: process.uptime(), database: 'connected' },
-  })
+  res.json({ success: true, data: { uptime: process.uptime(), database: 'connected' } })
 )
 
-// Routes
 app.use('/api/auth', authRoutes)
 
-// 404 & error handling (must be last)
 app.use(notFound)
 app.use(errorHandler)
 
