@@ -1,10 +1,24 @@
-import http from 'node:http'
+import 'dotenv/config'
+import mongoose from 'mongoose'
 import app from './app.js'
-import { env } from './config/env.js'
-import { connectDb, disconnectDb } from './config/db.js'
-const server = http.createServer(app)
-await connectDb()
-server.listen(env.PORT, () => console.info(`Rankfasta API listening on ${env.PORT}`))
-const shutdown = async () => { server.close(async () => { await disconnectDb(); process.exit(0) }) }
-process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown)
-process.on('unhandledRejection', (error) => { console.error(error); shutdown() })
+
+const port = process.env.PORT || 5000
+const mongoUri = process.env.MONGODB_URI
+
+if (!mongoUri) {
+  throw new Error('MONGODB_URI is not configured')
+}
+
+await mongoose.connect(mongoUri)
+
+const server = app.listen(port, () => {
+  console.log(`API listening on port ${port}`)
+})
+
+const shutdown = async () => {
+  await mongoose.connection.close()
+  server.close(() => process.exit(0))
+}
+
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
