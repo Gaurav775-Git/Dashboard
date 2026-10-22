@@ -39,20 +39,10 @@ export const register = async (input, meta) => {
     email: input.email,
     company: input.company,
     passwordHash: await hashPassword(input.password),
+    emailVerified: true, // ✅ Auto-verify for now
   })
 
-  const token = await createAuthToken(user, 'email_verify', 86400000)
-  await sendAuthEmail({
-    to: user.email,
-    subject: 'Verify your Rankfasta email',
-    text: `${env.CLIENT_URL}/verify-email?token=${token}`,
-  })
-
-  // If email verification is required, do NOT log in yet
-  if (env.REQUIRE_EMAIL_VERIFICATION) {
-    return { user: publicUser(user), requiresVerification: true }
-  }
-
+  // ✅ Instantly log the user in upon registration
   return issueLogin(user, meta)
 }
 
@@ -84,9 +74,7 @@ export const login = async (input, meta) => {
   user.lastLoginAt = new Date()
   await user.save()
 
-  if (env.REQUIRE_EMAIL_VERIFICATION && !user.emailVerified) {
-    throw new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Please verify your email before logging in.')
-  }
+  // ✅ Email verification check completely removed here!
 
   return issueLogin(user, meta)
 }
