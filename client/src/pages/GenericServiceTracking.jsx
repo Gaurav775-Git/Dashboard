@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Navbar from '../components/Navbar'
@@ -6,7 +7,8 @@ import { getGenericServiceConfig } from '../config/serviceConfigs'
 
 const rows = ['Primary campaign target', 'Secondary target', 'Priority milestone', 'Monitoring checkpoint']
 
-const GenericServiceTracking = ({ serviceId }) => {
+const GenericServiceTracking = () => {
+  const { serviceId } = useParams()
   const config = getGenericServiceConfig(serviceId)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('All')
