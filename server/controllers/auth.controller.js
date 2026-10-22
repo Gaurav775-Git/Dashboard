@@ -1,74 +1,107 @@
-import mongoose from 'mongoose'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { pool } = require('../config/db');
 
-// --- MODEL (Kept here to keep files minimal) ---
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-}, { timestamps: true })
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
 
-const User = mongoose.models.User || mongoose.model('User', userSchema)
+const signToken = (user) =>
+  jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  });
 
-// --- HELPER: Generate Token ---
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' })
-}
-
-// --- CONTROLLERS ---
-
-export const register = async (req, res) => {
+// POST /api/auth/register
+exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password } = req.body;
 
-    // 1. Check if user exists
-    const userExists = await User.findOne({ email })
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'User already exists' })
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
-    // 2. Hash password
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(password, salt)
+    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
 
-    // 3. Create user
-    const user = await User.create({ name, email, password: hashedPassword })
+    const hashed = await bcrypt.hash(password, 10);
+    const [result] = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      [name, email.toLowerCase(), hashed]
+    );
 
-    // 4. Return token and user data
-    res.status(201).json({
-      success: true,
-      token: generateToken(user._id),
-      user: { id: user._id, name: user.name, email: user.email }
-    })
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message })
+    const user = { id: result.insertId, name, email: email.toLowerCase() };
+    const token = signToken(user);
+    res.cookie('token', token, cookieOptions);
+
+    return res.status(201).json({ success: true, message: 'Registered successfully', token, user });
+  } catch (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
-}
+};
 
-export const login = async (req, res) => {
+// POST /api/auth/login
+exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { email, password } = req.body;
 
-    // 1. Find user
-    const user = await User.findOne({ email })
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' })
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
-    // 2. Check password
-    const isMatch = await bcrypt.compare(password, user.password)
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' })
+    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
-    // 3. Return token and user data
-    res.status(200).json({
+    const user = rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    const token = signToken(user);
+    res.cookie('token', token, cookieOptions);
+
+    return res.json({
       success: true,
-      token: generateToken(user._id),
-      user: { id: user._id, name: user.name, email: user.email }
-    })
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message })
+      message: 'Login successful',
+      token,
+      user: { id: user.id, name: user.name, email: user.email },
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
-}
+};
+
+// GET /api/auth/me  (protected)
+exports.me = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, email, created_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    return res.json({ success: true, user: rows[0] });
+  } catch (err) {
+    console.error('Me error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// POST /api/auth/logout
+exports.logout = (req, res) => {
+  res.clearCookie('token', cookieOptions);
+  return res.json({ success: true, message: 'Logged out' });
+};

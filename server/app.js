@@ -1,34 +1,56 @@
-import express from 'express'
-import mongoose from 'mongoose'
-import cors from 'cors'
-import dotenv from 'dotenv'
-import authRoutes from './routes/auth.routes.js'
+require('dotenv').config();
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const cors = require('cors');
 
-dotenv.config()
+const { initDb } = require('./config/db');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const authRouter = require('./routes/auth.routes');
 
-const app = express()
+const app = express();
 
-// 1. Allow ANY frontend to connect (Vercel, Localhost, etc.)
-app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}))
+// view engine
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
-// 2. Parse incoming JSON
-app.use(express.json())
+app.use(logger('dev'));
+app.use(cors({ origin: process.env.CLIENT_URL || true, credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 3. Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch((err) => console.log('❌ MongoDB Connection Error:', err))
+// init DB (creates table if missing)
+initDb().catch((err) => console.error('DB init failed:', err.message));
 
-// 4. Routes
-app.use('/api/auth', authRoutes)
+// routes
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/api/auth', authRouter);
 
-// 5. Start Server
-const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`)
-})
+// 404
+app.use((req, res, next) => next(createError(404)));
+
+// error handler
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(status).json({ success: false, message: err.message });
+  }
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  res.status(status);
+  res.render('error');
+});
+
+// Start server locally (Vercel handles this itself)
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+}
+
+module.exports = app;

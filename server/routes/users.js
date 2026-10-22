@@ -1,9 +1,16 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
+const { pool } = require('../config/db');
+const verifyToken = require('../middleware/auth.middleware');
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, name, email, created_at FROM users');
+    res.json({ success: true, users: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 module.exports = router;
