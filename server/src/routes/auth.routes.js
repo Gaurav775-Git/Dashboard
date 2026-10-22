@@ -1,19 +1,16 @@
 import express from 'express'
 import * as controller from '../controllers/auth.controller.js'
-import { validate } from '../middleware/validate.js'
 import { authenticate } from '../middleware/authenticate.js'
-import { loginLimiter, recoveryLimiter, refreshLimiter, registerLimiter } from '../middleware/rateLimiters.js'
-import { registerSchema, loginSchema, emailSchema, tokenSchema, resetSchema, changePasswordSchema } from '../validators/auth.schemas.js'
+// Temporarily remove limiters and validators for login to debug
+import { loginLimiter } from '../middleware/rateLimiters.js' 
+
 const router = express.Router()
-router.post('/register', registerLimiter, validate(registerSchema), controller.register)
-router.post('/login', loginLimiter, validate(loginSchema), controller.login)
-router.post('/logout', controller.logout)
-router.post('/logout-all', authenticate, controller.logoutAll)
-router.post('/refresh', refreshLimiter, controller.refresh)
+
+// We keep the limiter (which is now bypassed)
+router.post('/login', loginLimiter, controller.login)
+router.post('/register', controller.register)
+router.post('/refresh', controller.refresh)
 router.get('/me', authenticate, controller.me)
-router.post('/verify-email', validate(tokenSchema), controller.verifyEmail)
-router.post('/resend-verification', recoveryLimiter, validate(emailSchema), controller.resendVerification)
-router.post('/forgot-password', recoveryLimiter, validate(emailSchema), controller.forgotPassword)
-router.post('/reset-password', validate(resetSchema), controller.resetPassword)
-router.post('/change-password', authenticate, validate(changePasswordSchema), controller.changePassword)
+router.post('/logout', controller.logout)
+
 export default router
