@@ -33,4 +33,4 @@ export const clearAuthCookies = (res) => {
   res.clearCookie('access_token', cookieOptions);
   res.clearCookie('refresh_token', { ...cookieOptions, path: '/api/auth' });
 
-  
+}
