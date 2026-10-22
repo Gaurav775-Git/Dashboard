@@ -1,36 +1,33 @@
 export const setAuthCookies = (res, accessToken, refreshToken) => {
-  // Bulletproof settings for cross-domain deployment (Vercel -> Render)
-  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
+  // Hardcoded for Render/Vercel cross-domain deployment
   const cookieOptions = {
     httpOnly: true,
-    secure: isProd, // Must be true for SameSite=None
-    sameSite: isProd ? 'none' : 'lax', // STRICT lowercase 'none'
-    path: '/',
+    secure: true,         // MUST be true for Render (HTTPS)
+    sameSite: 'none',     // MUST be lowercase 'none' for cross-domain
+    domain: undefined     // Let the browser figure out the domain
   };
 
   res.cookie('access_token', accessToken, {
     ...cookieOptions,
+    path: '/',
     maxAge: 15 * 60 * 1000, // 15 mins
   });
 
   res.cookie('refresh_token', refreshToken, {
     ...cookieOptions,
-    path: '/api/auth', // Only send to refresh route
+    path: '/api/auth',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
 export const clearAuthCookies = (res) => {
-  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const cookieOptions = {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
-    path: '/',
+    secure: true,
+    sameSite: 'none',
+    domain: undefined
   };
 
-  res.clearCookie('access_token', cookieOptions);
+  res.clearCookie('access_token', { ...cookieOptions, path: '/' });
   res.clearCookie('refresh_token', { ...cookieOptions, path: '/api/auth' });
-
-}
+};
