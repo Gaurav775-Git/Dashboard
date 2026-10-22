@@ -1,49 +1,75 @@
-/* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import * as authApi from '../lib/authApi'
+import { createContext, useContext, useState, useEffect } from 'react'
+import * as authApi from '../api/auth'
 
 const AuthContext = createContext(null)
-const channel = typeof window !== 'undefined' && 'BroadcastChannel' in window ? new BroadcastChannel('rankfasta-auth') : null
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [loading, setLoading] = useState(true)
 
-  const refreshUser = async () => {
-    try {
-      const result = await authApi.getMe()
-      setUser(result?.user || result)
-      setStatus('authenticated')
-      return result
-    } catch {
-      setUser(null)
-      setStatus('unauthenticated')
-      return null
-    }
-  }
+  // 1. Check for token on initial load
   useEffect(() => {
-    let active = true
-    authApi.getMe().then((result) => {
-      if (active) { setUser(result?.user || result); setStatus('authenticated') }
-    }).catch(() => {
-      if (active) { setUser(null); setStatus('unauthenticated') }
-    })
-    const handleLogout = () => { setUser(null); setStatus('unauthenticated') }
+    const checkAuth = () => {
+      const token = localStorage.getItem('token')
+      const storedUser = localStorage.getItem('user')
+
+      if (token && storedUser) {
+        setUser(JSON.parse(storedUser))
+      }
+      setLoading(false)
+    }
+
+    checkAuth()
+
+    // Listen for the logout event triggered by Axios interceptor (401 errors)
+    const handleLogout = () => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      setUser(null)
+    }
+
     window.addEventListener('auth:logout', handleLogout)
-    channel?.addEventListener('message', handleLogout)
-    return () => { active = false; window.removeEventListener('auth:logout', handleLogout); channel?.removeEventListener('message', handleLogout) }
+    return () => window.removeEventListener('auth:logout', handleLogout)
   }, [])
-  const value = useMemo(() => ({
-    user, status, refreshUser,
-    async login(credentials) { const result = await authApi.login(credentials); setUser(result?.user || result); setStatus('authenticated'); return result },
-    async register(data) { const result = await authApi.register(data); if (result?.user) { setUser(result.user); setStatus('authenticated') }; return result },
-    async logout() { try { await authApi.logout() } finally { setUser(null); setStatus('unauthenticated'); channel?.postMessage('logout') } },
-  }), [user, status])
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+
+  // 2. Login function
+  const login = async (data) => {
+    const response = await authApi.login(data)
+    
+    // Save to localStorage
+    localStorage.setItem('token', response.token)
+    localStorage.setItem('user', JSON.stringify(response.user))
+    
+    // Update state
+    setUser(response.user)
+    return response
+  }
+
+  // 3. Register function
+  const register = async (data) => {
+    const response = await authApi.register(data)
+    
+    // Save to localStorage
+    localStorage.setItem('token', response.token)
+    localStorage.setItem('user', JSON.stringify(response.user))
+    
+    // Update state
+    setUser(response.user)
+    return response
+  }
+
+  // 4. Logout function
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {!loading && children}
+    </AuthContext.Provider>
+  )
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used within an AuthProvider')
-  return context
-}
+export const useAuth = () => useContext(AuthContext)

@@ -1,40 +1,34 @@
 import axios from 'axios'
 
-const authFreePaths = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email']
-let refreshPromise = null
-
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api', // Ensure your VITE_API_URL ends with /api
   timeout: 60000,
-  headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+  headers: { 'Content-Type': 'application/json' },
 })
 
+// 1. Automatically attach the JWT token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 2. Simple error handler
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const request = error.config
-    const path = request?.url || ''
-    if (error.response?.status === 401 && request && !request._retry && !authFreePaths.some((item) => path.includes(item))) {
-      request._retry = true
-      refreshPromise ||= api.post('/auth/refresh').finally(() => { refreshPromise = null })
-      try {
-        await refreshPromise
-        return api(request)
-      } catch (refreshError) {
-        window.dispatchEvent(new CustomEvent('auth:logout'))
-        throw refreshError
-      }
+  (error) => {
+    // If the token is invalid/expired (401), log the user out
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.dispatchEvent(new CustomEvent('auth:logout'))
     }
-    const response = error.response
-    const backend = response?.data?.error
-    const isBackendEnvelope = response?.data?.success === false && backend && typeof backend === 'object'
+    
+    // Throw a clean error for your UI to catch
     throw {
-      status: response?.status,
-      code: isBackendEnvelope ? backend.code : 'SERVER_UNREACHABLE',
-      message: isBackendEnvelope ? backend.message : "Can't reach the server. Please try again.",
-      details: isBackendEnvelope ? backend.details : undefined,
-      retryAfter: response?.headers?.['retry-after'],
+      status: error.response?.status,
+      message: error.response?.data?.message || 'Something went wrong. Please try again.',
     }
-  },
+  }
 )

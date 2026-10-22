@@ -1,7 +1,0 @@
-import argon2 from 'argon2'
-import { ApiError } from '../utils/ApiError.js'
-const common = new Set(['password', 'password1', '1234567890', 'qwerty123', 'letmein123', 'welcome123', 'admin123', 'iloveyou', 'monkey123', 'abc123456', 'passw0rd', 'changeme', 'rankfasta', 'linkedin123', 'facebook123', 'instagram123', 'google123', 'whatever1', 'trustno1', 'dragon123', 'baseball1', 'football1', 'sunshine1', 'princess1', 'master123', 'login123', 'welcome1', 'hello123', 'freedom1', 'secret123', 'starwars1', 'superman1', 'qwertyuiop', 'asdfghjkl1', 'zxcvbnm1', '1111111111', '0000000000', '1231231231', '6543211234', '1q2w3e4r5t', 'qazwsxedc1', 'pass123456', 'test123456', 'user123456', 'default123', 'computer1', 'internet1', 'whatever123', 'password12', 'access123'])
-export const validatePasswordPolicy = (password, email = '', name = '') => { if (password.length < 10 || password.length > 128 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password) || common.has(password.toLowerCase()) || password.toLowerCase() === email.toLowerCase() || password.toLowerCase() === name.toLowerCase()) throw new ApiError(422, 'VALIDATION_ERROR', 'Password does not meet the password policy.') }
-export const hashPassword = (password) => argon2.hash(password)
-export const verifyPassword = (hash, password) => argon2.verify(hash, password)
-export const dummyHash = '$argon2id$v=19$m=65536,t=3,p=4$U29tZVNhbHQ$3l7R0qv4f+4z0oJ7VQy8j8w8f4nM2xQ2K1Q3uG6Y5aA'
