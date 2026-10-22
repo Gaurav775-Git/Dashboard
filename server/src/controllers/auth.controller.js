@@ -1,32 +1,68 @@
-export const setAuthCookies = (res, accessToken, refreshToken) => {
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,         
-    sameSite: 'none',     // <--- MUST BE LOWERCASE 'none'
-    domain: undefined     
-  };
+import * as authService from '../services/auth.service.js'
+import { setAuthCookies, clearAuthCookies } from '../utils/cookies.js'
 
-  res.cookie('access_token', accessToken, {
-    ...cookieOptions,
-    path: '/',
-    maxAge: 15 * 60 * 1000, 
-  });
+const meta = (req) => ({
+  userAgent: req.headers['user-agent'] || '',
+  ip: req.ip,
+})
 
-  res.cookie('refresh_token', refreshToken, {
-    ...cookieOptions,
-    path: '/api/auth',
-    maxAge: 7 * 24 * 60 * 60 * 1000, 
-  });
-};
+const respond = (res, status, data) =>
+  res.status(status).json({ success: true, data })
 
-export const clearAuthCookies = (res) => {
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    domain: undefined
-  };
+const respondWithAuth = (res, status, result) => {
+  setAuthCookies(res, result.accessToken, result.refreshToken)
+  return respond(res, status, { user: result.user })
+}
 
-  res.clearCookie('access_token', { ...cookieOptions, path: '/' });
-  res.clearCookie('refresh_token', { ...cookieOptions, path: '/api/auth' });
-};
+export const register = async (req, res, next) => {
+  try {
+    const result = await authService.register(req.body, meta(req))
+    return respondWithAuth(res, 201, result)
+  } catch (e) { next(e) }
+}
+
+export const login = async (req, res, next) => {
+  try {
+    const result = await authService.login(req.body, meta(req))
+    return respondWithAuth(res, 200, result)
+  } catch (e) { next(e) }
+}
+
+export const refresh = async (req, res, next) => {
+  try {
+    const raw = req.cookies.refresh_token
+    const result = await authService.refresh(raw, meta(req))
+    return respondWithAuth(res, 200, result)
+  } catch (e) { next(e) }
+}
+
+export const logout = async (req, res) => {
+  clearAuthCookies(res)
+  return respond(res, 200, { ok: true })
+}
+
+export const me = async (req, res) => {
+  return respond(res, 200, { user: req.user.toJSON() })
+}
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    await authService.forgotPassword(req.body.email)
+    return respond(res, 200, { ok: true })
+  } catch (e) { next(e) }
+}
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    await authService.resetPassword(req.body.token, req.body.password)
+    return respond(res, 200, { ok: true })
+  } catch (e) { next(e) }
+}
+
+export const changePassword = async (req, res, next) => {
+  try {
+    await authService.changePassword(req.user, req.body.currentPassword, req.body.newPassword)
+    clearAuthCookies(res)
+    return respond(res, 200, { ok: true })
+  } catch (e) { next(e) }
+}
