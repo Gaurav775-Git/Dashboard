@@ -1,49 +1,66 @@
-/* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import * as authApi from '../lib/authApi'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { api } from '../lib/api'
 
 const AuthContext = createContext(null)
-const channel = typeof window !== 'undefined' && 'BroadcastChannel' in window ? new BroadcastChannel('rankfasta-auth') : null
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [loading, setLoading] = useState(true)
 
-  const refreshUser = async () => {
-    try {
-      const result = await authApi.getMe()
-      setUser(result?.user || result)
-      setStatus('authenticated')
-      return result
-    } catch {
-      setUser(null)
-      setStatus('unauthenticated')
-      return null
-    }
-  }
+  // On app load, restore the session from the saved token
   useEffect(() => {
-    let active = true
-    authApi.getMe().then((result) => {
-      if (active) { setUser(result?.user || result); setStatus('authenticated') }
-    }).catch(() => {
-      if (active) { setUser(null); setStatus('unauthenticated') }
-    })
-    const handleLogout = () => { setUser(null); setStatus('unauthenticated') }
-    window.addEventListener('auth:logout', handleLogout)
-    channel?.addEventListener('message', handleLogout)
-    return () => { active = false; window.removeEventListener('auth:logout', handleLogout); channel?.removeEventListener('message', handleLogout) }
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    api
+      .get('/auth/me')
+      .then((res) => setUser(res.data.user))
+      .catch(() => localStorage.removeItem('token'))
+      .finally(() => setLoading(false))
   }, [])
-  const value = useMemo(() => ({
-    user, status, refreshUser,
-    async login(credentials) { const result = await authApi.login(credentials); setUser(result?.user || result); setStatus('authenticated'); return result },
-    async register(data) { const result = await authApi.register(data); if (result?.user) { setUser(result.user); setStatus('authenticated') }; return result },
-    async logout() { try { await authApi.logout() } finally { setUser(null); setStatus('unauthenticated'); channel?.postMessage('logout') } },
-  }), [user, status])
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+
+  // Logged out by the api interceptor (expired token)
+  useEffect(() => {
+    const onLogout = () => setUser(null)
+    window.addEventListener('auth:logout', onLogout)
+    return () => window.removeEventListener('auth:logout', onLogout)
+  }, [])
+
+  const login = async ({ email, password }) => {
+    const { data } = await api.post('/auth/login', { email, password })
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    return data.user
+  }
+
+  const register = async ({ name, email, password }) => {
+    const { data } = await api.post('/auth/register', { name, email, password })
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    return data.user
+  }
+
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // ignore, we clear locally anyway
+    }
+    localStorage.removeItem('token')
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used within an AuthProvider')
-  return context
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
+  return ctx
 }
