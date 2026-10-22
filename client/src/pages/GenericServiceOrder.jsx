@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Footer from '../components/Footer'
@@ -7,7 +8,8 @@ import { getGenericServiceConfig } from '../config/serviceConfigs'
 
 const stages = ['Service', 'Requirements', 'Configuration', 'Review', 'Payment']
 const labels = { website: 'Website or profile URL', target: 'Target page, product, or profile', prompts: 'Prompts to monitor', keywords: 'Keywords to track', channels: 'Channels to include', scope: 'Audit scope', entity: 'Entity or brand name', bio: 'Bio or profile brief', announcement: 'Announcement details', anchor: 'Preferred anchor text', queries: 'Search queries', location: 'Business location', notes: 'Notes for the specialist' }
-const GenericServiceOrder = ({ serviceId }) => {
+const GenericServiceOrder = () => {
+  const { serviceId } = useParams()
   const config = getGenericServiceConfig(serviceId)
   const key = `rankfasta-${serviceId}-draft`
   const initial = { packageId: 'starter', ...Object.fromEntries(config.fields.map((field) => [field, ''])), consent: false, duration: '30', frequency: 'Weekly' }
