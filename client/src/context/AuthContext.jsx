@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import * as authApi from '../api/auth'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { api } from '../lib/api'
 
 const AuthContext = createContext(null)
 
@@ -7,69 +7,60 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // 1. Check for token on initial load
+  // On app load, restore the session from the saved token
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('token')
-      const storedUser = localStorage.getItem('user')
-
-      if (token && storedUser) {
-        setUser(JSON.parse(storedUser))
-      }
+    const token = localStorage.getItem('token')
+    if (!token) {
       setLoading(false)
+      return
     }
-
-    checkAuth()
-
-    // Listen for the logout event triggered by Axios interceptor (401 errors)
-    const handleLogout = () => {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      setUser(null)
-    }
-
-    window.addEventListener('auth:logout', handleLogout)
-    return () => window.removeEventListener('auth:logout', handleLogout)
+    api
+      .get('/auth/me')
+      .then((res) => setUser(res.data.user))
+      .catch(() => localStorage.removeItem('token'))
+      .finally(() => setLoading(false))
   }, [])
 
-  // 2. Login function
-  const login = async (data) => {
-    const response = await authApi.login(data)
-    
-    // Save to localStorage
-    localStorage.setItem('token', response.token)
-    localStorage.setItem('user', JSON.stringify(response.user))
-    
-    // Update state
-    setUser(response.user)
-    return response
+  // Logged out by the api interceptor (expired token)
+  useEffect(() => {
+    const onLogout = () => setUser(null)
+    window.addEventListener('auth:logout', onLogout)
+    return () => window.removeEventListener('auth:logout', onLogout)
+  }, [])
+
+  const login = async ({ email, password }) => {
+    const { data } = await api.post('/auth/login', { email, password })
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    return data.user
   }
 
-  // 3. Register function
-  const register = async (data) => {
-    const response = await authApi.register(data)
-    
-    // Save to localStorage
-    localStorage.setItem('token', response.token)
-    localStorage.setItem('user', JSON.stringify(response.user))
-    
-    // Update state
-    setUser(response.user)
-    return response
+  const register = async ({ name, email, password }) => {
+    const { data } = await api.post('/auth/register', { name, email, password })
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    return data.user
   }
 
-  // 4. Logout function
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // ignore, we clear locally anyway
+    }
     localStorage.removeItem('token')
-    localStorage.removeItem('user')
     setUser(null)
   }
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
+  return ctx
+}
