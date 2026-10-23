@@ -11,6 +11,9 @@ const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth.routes');
 
+// ADD THIS LINE:
+const servicesRouter = require('./routes/services.routes'); 
+
 const app = express();
 
 // view engine
@@ -31,6 +34,9 @@ initDb().catch((err) => console.error('DB init failed:', err.message));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/auth', authRouter);
+
+// ADD THIS LINE:
+app.use('/api/services', servicesRouter); 
 
 // 404
 app.use((req, res, next) => next(createError(404)));

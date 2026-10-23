@@ -27,7 +27,6 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 20000,
-  // Aiven requires SSL
   ssl: process.env.DB_CA
     ? { ca: process.env.DB_CA.replace(/\\n/g, '\n'), rejectUnauthorized: true }
     : { rejectUnauthorized: false },
@@ -43,7 +42,34 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  console.log('MySQL connected, users table ready');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS google_indexing_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      website VARCHAR(255) NOT NULL,
+      property VARCHAR(255) NOT NULL,
+      property_type VARCHAR(50) NOT NULL,
+      sitemap VARCHAR(255),
+      urls JSON NOT NULL,
+      total_urls INT NOT NULL,
+      locale VARCHAR(100),
+      priority VARCHAR(50),
+      tracking_days VARCHAR(50),
+      frequency VARCHAR(50),
+      notes TEXT,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+  
+  console.log('MySQL connected, tables ready');
 }
 
 module.exports = { pool, initDb };
