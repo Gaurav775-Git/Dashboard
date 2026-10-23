@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { createPaymentIntent } = require('../controllers/payment.controller');
+
 const { 
   createIndexingOrder, 
   getIndexingOrders, 
@@ -11,5 +13,7 @@ router.route('/google-indexing')
   .get(getIndexingOrders);
 
 router.patch('/google-indexing/:id/status', updateOrderStatus); 
+router.post('/payments/create-intent', createPaymentIntent);
+
 
 module.exports = router;
