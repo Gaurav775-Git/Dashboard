@@ -20,28 +20,36 @@ const AdminDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [submittingId, setSubmittingId] = useState(null)
+
+  const fetchOrders = async (showLoading = false) => {
+    if (showLoading) setLoading(true)
+    try {
+      const response = await getGoogleIndexingOrders()
+      setOrders(response.data)
+    } catch (error) {
+      console.error("Failed to fetch orders:", error)
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await getGoogleIndexingOrders()
-        setOrders(response.data)
-      } catch (error) {
-        console.error("Failed to fetch orders:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchOrders()
+    fetchOrders(true)
   }, [])
 
-  const handleStatusChange = async (id, newStatus) => {
-    // Changed o._id to o.id for MySQL
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o)))
+  const handleSubmitToIndexer = async (id) => {
+    setSubmittingId(id)
     try {
-      await updateGoogleIndexingStatus(id, newStatus)
+      await updateGoogleIndexingStatus(id, 'processing')
+      
+      setTimeout(() => {
+        fetchOrders()
+        setSubmittingId(null)
+      }, 3000)
     } catch (error) {
-      alert("Failed to update status in database: " + error.message)
+      alert("Failed to submit to Rapid Indexer: " + error.message)
+      setSubmittingId(null)
     }
   }
 
@@ -173,26 +181,25 @@ const AdminDashboard = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`cursor-pointer rounded-lg border px-2 py-1 text-xs font-semibold capitalize outline-none ${
-                            statusColors[order.status] || statusColors.pending
-                          }`}
-                        >
-                          <option value="pending" className="bg-slate-900 text-white">Pending</option>
-                          <option value="processing" className="bg-slate-900 text-white">Processing</option>
-                          <option value="completed" className="bg-slate-900 text-white">Completed</option>
-                          <option value="failed" className="bg-slate-900 text-white">Failed</option>
-                        </select>
+                        <StatusBadge status={order.status} />
                       </td>
                       <td className="px-6 py-4 text-right">
+                        
+                        <button
+                          onClick={() => handleSubmitToIndexer(order.id)}
+                          disabled={submittingId === order.id || order.status === 'processing' || order.status === 'completed'}
+                          className="mr-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {submittingId === order.id ? 'Submitting...' : 'Submit'}
+                        </button>
+                        
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
                         >
                           View
                         </button>
+
                       </td>
                     </tr>
                   ))
@@ -220,6 +227,30 @@ const AdminDashboard = () => {
                   <div className="flex justify-between py-1"><span className="text-slate-400">Date</span><span className="text-slate-200">{new Date(selectedOrder.createdAt).toLocaleString()}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Client</span><span className="text-slate-200">{selectedOrder.userId?.email || '—'}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Package</span><span className="text-slate-200">{selectedOrder.packageName} (${selectedOrder.totalPrice})</span></div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Rapid Indexer API</h3>
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">API Status</span>
+                    <span className={`font-semibold capitalize ${selectedOrder.google_api_status === 'submitted' ? 'text-emerald-400' : selectedOrder.google_api_status === 'failed' ? 'text-red-400' : 'text-slate-400'}`}>
+                      {selectedOrder.google_api_status || 'not submitted'}
+                    </span>
+                  </div>
+                  {selectedOrder.rapid_indexer_task_id && (
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-400">Task ID</span>
+                      <span className="font-mono text-xs text-slate-200">{selectedOrder.rapid_indexer_task_id}</span>
+                    </div>
+                  )}
+                  {selectedOrder.google_api_error && (
+                    <div className="mt-2 pt-2 border-t border-slate-800">
+                      <span className="mb-1 block text-xs text-red-400">Error Details</span>
+                      <p className="text-xs text-slate-300">{selectedOrder.google_api_error}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

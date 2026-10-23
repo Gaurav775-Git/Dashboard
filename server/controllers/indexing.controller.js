@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 const crypto = require('crypto');
+const { submitToRapidIndexer } = require('../services/rapidIndexer.service');
 
 const createIndexingOrder = async (req, res) => {
   try {
@@ -87,6 +88,8 @@ const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
     const { id } = req.params;
 
+    console.log(`[Backend] Updating order ${id} to status: ${status}`);
+
     const [result] = await pool.query(
       'UPDATE google_indexing_orders SET status = ? WHERE id = ?',
       [status, id]
@@ -96,7 +99,23 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    res.status(200).json({ success: true, message: 'Status updated successfully' });
+    if (status === 'processing') {
+      console.log(`[Backend] Fetching URLs for order ${id}`);
+      
+      const [rows] = await pool.query('SELECT urls FROM google_indexing_orders WHERE id = ?', [id]);
+      
+      if (rows.length > 0) {
+        const urls = typeof rows[0].urls === 'string' ? JSON.parse(rows[0].urls) : rows[0].urls;
+        console.log(`[Backend] Sending URLs to Rapid Indexer:`, urls);
+        
+        const isSuccess = await submitToRapidIndexer(id, urls);
+        console.log(`[Backend] Rapid Indexer Result for order ${id}:`, isSuccess ? 'Success' : 'Failed');
+      } else {
+        console.log(`[Backend] No URLs found for order ${id}`);
+      }
+    }
+
+    res.status(200).json({ success: true, message: 'Status updated and indexing triggered.' });
   } catch (error) {
     console.error('Error updating order status:', error);
     res.status(500).json({ success: false, message: 'Server error' });
