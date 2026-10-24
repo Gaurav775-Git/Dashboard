@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+
 const { createPaymentIntent } = require('../controllers/payment.controller');
+const { protect } = require('../middleware/auth.middleware');
 
 const { 
   createIndexingOrder, 
@@ -9,11 +11,10 @@ const {
 } = require('../controllers/indexing.controller');
 
 router.route('/google-indexing')
-  .post(createIndexingOrder)
-  .get(getIndexingOrders);
+  .post(protect, createIndexingOrder)
+  .get(protect, getIndexingOrders);
 
-router.patch('/google-indexing/:id/status', updateOrderStatus); 
+router.patch('/google-indexing/:id/status', protect, updateOrderStatus); 
 router.post('/payments/create-intent', createPaymentIntent);
-
 
 module.exports = router;

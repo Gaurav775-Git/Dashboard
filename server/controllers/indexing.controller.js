@@ -4,12 +4,18 @@ const { submitToRapidIndexer } = require('../services/rapidIndexer.service');
 
 const createIndexingOrder = async (req, res) => {
   try {
-    const userId = req.user?.id || 1; 
+    // Ensure the user is authenticated and we have their ID
+    const userId = req.user?.id; 
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Not authorized, no user ID found' });
+    }
 
     const { 
       packageId, packageName, totalPrice, 
       website, property, propertyType, sitemap, urls, 
-      locale, priority, trackingDays, frequency, notes 
+      locale, priority, trackingDays, frequency, notes,
+      paymentIntentId
     } = req.body;
 
     if (!urls || urls.length === 0) {
@@ -21,14 +27,15 @@ const createIndexingOrder = async (req, res) => {
 
     const query = `
       INSERT INTO google_indexing_orders 
-      (user_id, order_id, package_id, package_name, total_price, website, property, property_type, sitemap, urls, total_urls, locale, priority, tracking_days, frequency, notes) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (user_id, order_id, package_id, package_name, total_price, website, property, property_type, sitemap, urls, total_urls, locale, priority, tracking_days, frequency, notes, payment_intent_id) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       userId, orderId, packageId, packageName, totalPrice, 
       website, property, propertyType, sitemap, urlsJson, urls.length, 
-      locale, priority, trackingDays, frequency, notes
+      locale, priority, trackingDays, frequency, notes,
+      paymentIntentId
     ];
 
     const [result] = await pool.query(query, values);
@@ -46,8 +53,14 @@ const createIndexingOrder = async (req, res) => {
 
 const getIndexingOrders = async (req, res) => {
   try {
-    const userId = req.user?.id || 1;
-    const isAdmin = req.user?.role === 'admin' || true;
+    const userId = req.user?.id;
+    
+    // Check if user is admin based on their role
+    const isAdmin = req.user?.role === 'admin'; 
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Not authorized, no user ID found' });
+    }
 
     let query = `
       SELECT o.*, u.name AS user_name, u.email AS user_email 
@@ -56,6 +69,7 @@ const getIndexingOrders = async (req, res) => {
     `;
     let params = [];
 
+    // If the user is NOT an admin, filter to show ONLY their own orders
     if (!isAdmin) {
       query += ' WHERE o.user_id = ?';
       params.push(userId);

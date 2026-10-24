@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = function verifyToken(req, res, next) {
+const verifyToken = (req, res, next) => {
   const header = req.headers.authorization;
   const token =
     (header && header.startsWith('Bearer ') && header.split(' ')[1]) ||
@@ -17,3 +17,5 @@ module.exports = function verifyToken(req, res, next) {
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 };
+
+module.exports = { protect: verifyToken };
