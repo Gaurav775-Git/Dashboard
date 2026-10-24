@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { getGoogleIndexingOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
+import { getAdminGoogleIndexingOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
 
 const statusColors = {
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -25,7 +25,8 @@ const AdminDashboard = () => {
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
     try {
-      const response = await getGoogleIndexingOrders()
+      // Use the Admin API endpoint
+      const response = await getAdminGoogleIndexingOrders()
       setOrders(response.data)
     } catch (error) {
       console.error("Failed to fetch orders:", error)

@@ -10,6 +10,12 @@ export const getGoogleIndexingOrders = async () => {
   return response.data
 }
 
+// NEW: Admin fetching route
+export const getAdminGoogleIndexingOrders = async () => {
+  const response = await api.get('/services/admin/google-indexing')
+  return response.data
+}
+
 export const updateGoogleIndexingStatus = async (id, status) => {
   const response = await api.patch(`/services/google-indexing/${id}/status`, { status })
   return response.data
