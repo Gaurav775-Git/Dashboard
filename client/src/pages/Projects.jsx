@@ -12,11 +12,7 @@ const Projects = () => {
   useEffect(() => {
     const fetchUserOrders = async () => {
       try {
-        // Assuming your backend automatically filters by req.user.id for non-admins
         const response = await getGoogleIndexingOrders()
-        
-        // If you haven't implemented user filtering in the backend yet, 
-        // you can filter it here temporarily (replace 1 with actual user ID logic)
         setOrders(response.data)
       } catch (error) {
         console.error("Failed to fetch projects:", error)
@@ -61,15 +57,22 @@ const Projects = () => {
                   </span>
                 </div>
                 <h3 className="text-lg font-semibold text-rf-text">{order.website}</h3>
-                <p className="text-sm text-rf-muted mt-1">{order.totalUrls} URLs submitted · {order.packageName} Package</p>
+                <p className="text-sm text-rf-muted mt-1">
+                  {order.totalUrls || order.urls?.length || 0} URLs submitted · {order.packageName || 'Standard'} Package
+                </p>
               </div>
 
               <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end">
                 <div>
                   <p className="text-xs text-rf-muted mb-1">Amount Paid</p>
-                  <p className="font-bold text-rf-text">${order.totalPrice}</p>
+                  <p className="font-bold text-rf-text">${order.total_price || order.totalPrice || '0.00'}</p>
                   {order.payment_intent_id && (
-                    <p className="text-[10px] text-rf-success mt-1">✓ Paid via Stripe</p>
+                    <div className="mt-1">
+                      <p className="text-[10px] text-rf-success font-semibold">✓ Paid via Stripe</p>
+                      <p className="text-[9px] text-rf-muted font-mono truncate max-w-[120px]" title={order.payment_intent_id}>
+                        {order.payment_intent_id}
+                      </p>
+                    </div>
                   )}
                 </div>
                 <Button 

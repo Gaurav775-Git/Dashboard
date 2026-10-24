@@ -4,7 +4,6 @@ const { submitToRapidIndexer } = require('../services/rapidIndexer.service');
 
 const createIndexingOrder = async (req, res) => {
   try {
-    // Ensure the user is authenticated and we have their ID
     const userId = req.user?.id; 
 
     if (!userId) {
@@ -54,8 +53,6 @@ const createIndexingOrder = async (req, res) => {
 const getIndexingOrders = async (req, res) => {
   try {
     const userId = req.user?.id;
-    
-    // Check if user is admin based on their role
     const isAdmin = req.user?.role === 'admin'; 
 
     if (!userId) {
@@ -69,7 +66,6 @@ const getIndexingOrders = async (req, res) => {
     `;
     let params = [];
 
-    // If the user is NOT an admin, filter to show ONLY their own orders
     if (!isAdmin) {
       query += ' WHERE o.user_id = ?';
       params.push(userId);

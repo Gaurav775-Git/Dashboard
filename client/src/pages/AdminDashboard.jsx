@@ -25,7 +25,6 @@ const AdminDashboard = () => {
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
     try {
-      // Use the Admin API endpoint
       const response = await getAdminGoogleIndexingOrders()
       setOrders(response.data)
     } catch (error) {
@@ -227,7 +226,15 @@ const AdminDashboard = () => {
                   <div className="flex justify-between py-1"><span className="text-slate-400">Status</span><StatusBadge status={selectedOrder.status} /></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Date</span><span className="text-slate-200">{new Date(selectedOrder.createdAt).toLocaleString()}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Client</span><span className="text-slate-200">{selectedOrder.userId?.email || '—'}</span></div>
-                  <div className="flex justify-between py-1"><span className="text-slate-400">Package</span><span className="text-slate-200">{selectedOrder.packageName} (${selectedOrder.totalPrice})</span></div>
+                  <div className="flex justify-between py-1"><span className="text-slate-400">Package</span><span className="text-slate-200">{selectedOrder.packageName || 'Standard'}</span></div>
+                  <div className="flex justify-between py-1"><span className="text-slate-400">Amount</span><span className="font-semibold text-emerald-400">${selectedOrder.total_price || selectedOrder.totalPrice || '0.00'}</span></div>
+                  
+                  <div className="flex justify-between py-1 border-t border-slate-800 mt-1 pt-1">
+                    <span className="text-slate-400">Stripe Payment ID</span>
+                    <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]" title={selectedOrder.payment_intent_id}>
+                      {selectedOrder.payment_intent_id || 'N/A'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
