@@ -3,9 +3,9 @@ const { pool } = require('../config/db');
 const RAPID_INDEXER_API_KEY = process.env.RAPID_INDEXER_API_KEY;
 const RAPID_INDEXER_URL = 'https://rapid-indexer.com/api/v1/index.php?action=create_task';
 
-async function submitToRapidIndexer(orderId, urls) {
+async function submitToRapidIndexer(orderId, urls, engine = 'google') {
   try {
-    console.log(`[Rapid Indexer] Sending request for Order ID: ${orderId}`);
+    console.log(`[Rapid Indexer] Sending request for Order ID: ${orderId} to ${engine}`);
     
     if (!RAPID_INDEXER_API_KEY) {
       throw new Error("RAPID_INDEXER_API_KEY is missing in .env");
@@ -20,7 +20,7 @@ async function submitToRapidIndexer(orderId, urls) {
       body: JSON.stringify({
         urls: urls,
         type: 'indexer',
-        engine: 'google'
+        engine: engine
       })
     });
 

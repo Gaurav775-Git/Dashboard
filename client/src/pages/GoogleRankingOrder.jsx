@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements } from '@stripe/react-stripe-js'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
+import StripeCheckoutForm from '../components/StripeCheckoutForm'
+import { api } from '../lib/api'
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
 const DRAFT_KEY = 'rankfasta-google-ranking-draft'
 const stages = ['Service', 'Requirements', 'Configuration', 'Review', 'Payment']
@@ -29,8 +35,12 @@ const GoogleRankingOrder = () => {
   })
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('Saved just now')
+  const [clientSecret, setClientSecret] = useState('')
+  const [paymentError, setPaymentError] = useState('')
+  
   const selectedPackage = packages.find((item) => item.id === draft.packageId) || packages[0]
   const keywords = useMemo(() => parseKeywords(draft.keywords), [draft.keywords])
+  
   const update = (key, value) => {
     setSaved('Saving…')
     setDraft((current) => ({ ...current, [key]: value }))
@@ -43,6 +53,15 @@ const GoogleRankingOrder = () => {
     }, 250)
     return () => window.clearTimeout(timeout)
   }, [draft])
+
+  // Fetch Stripe Payment Intent when reaching the final step
+  useEffect(() => {
+    if (step === 4) {
+      api.post('/services/payments/create-intent', { amount: selectedPackage.price, currency: 'usd' })
+        .then(res => setClientSecret(res.data.clientSecret))
+        .catch(err => setPaymentError('Failed to initialize payment'))
+    }
+  }, [step, selectedPackage.price])
 
   const continueStep = () => {
     if (step === 1 && (!draft.website || !draft.target || !keywords.length)) {
@@ -58,12 +77,10 @@ const GoogleRankingOrder = () => {
       return
     }
     setError('')
-    if (step === 4) {
-      window.localStorage.removeItem(DRAFT_KEY)
-      window.location.assign(`/services/google-ranking/order/confirmation/ORD-${Date.now().toString().slice(-6)}`)
-      return
+    
+    if (step < stages.length - 1) {
+      setStep((current) => current + 1)
     }
-    setStep((current) => current + 1)
   }
 
   return (
@@ -78,9 +95,65 @@ const GoogleRankingOrder = () => {
             {step === 1 && <section><p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 2</p><h2 className="mt-2 text-xl font-semibold text-rf-text">Define your ranking targets</h2><div className="mt-6 grid gap-5 md:grid-cols-2"><label className="text-sm font-medium text-rf-text">Website URL<input value={draft.website} onChange={(event) => update('website', event.target.value)} className="mt-2 w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-3 text-sm" placeholder="https://yoursite.com" /></label><label className="text-sm font-medium text-rf-text">Target page<input value={draft.target} onChange={(event) => update('target', event.target.value)} className="mt-2 w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-3 text-sm" placeholder="https://yoursite.com/landing-page" /></label></div><label className="mt-5 block text-sm font-medium text-rf-text">Target keywords <span className="font-normal text-rf-muted">(one per line or comma-separated)</span><textarea rows="7" value={draft.keywords} onChange={(event) => update('keywords', event.target.value)} className="mt-2 w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-3 text-sm" placeholder="best seo tools&#10;seo reporting software" /><span className={`mt-2 block text-xs ${keywords.length > selectedPackage.keywords ? 'text-rf-danger' : 'text-rf-muted'}`}>{keywords.length} keyword{keywords.length === 1 ? '' : 's'} added · allowance {selectedPackage.keywords}</span></label></section>}
             {step === 2 && <section><p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 3</p><h2 className="mt-2 text-xl font-semibold text-rf-text">Configure rank tracking</h2><div className="mt-6 grid gap-5 md:grid-cols-2">{[['location', 'Target location', ['United States', 'United Kingdom', 'India', 'Worldwide']], ['language', 'Language', ['English', 'Spanish', 'French']], ['device', 'Devices', ['Desktop and mobile', 'Desktop', 'Mobile']], ['trackingDays', 'Tracking duration', ['30', '60', '90']], ['frequency', 'Report frequency', ['Weekly', 'Daily']]].map(([key, label, options]) => <label key={key} className="text-sm font-medium text-rf-text">{label}<select value={draft[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-3 text-sm">{options.map((option) => <option key={option} value={option}>{key === 'trackingDays' ? `${option} days` : option}</option>)}</select></label>)}</div><label className="mt-5 block text-sm font-medium text-rf-text">Campaign notes<textarea rows="4" value={draft.notes} onChange={(event) => update('notes', event.target.value)} className="mt-2 w-full rounded-lg border border-rf-border bg-rf-bg px-3 py-3 text-sm" placeholder="Competitors, seasonal context, or priorities for the specialist" /></label></section>}
             {step === 3 && <section><p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 4</p><h2 className="mt-2 text-xl font-semibold text-rf-text">Review your campaign</h2><dl className="mt-6 grid gap-4 rounded-xl bg-rf-surface-soft p-5 text-sm sm:grid-cols-2"><div><dt className="text-rf-muted">Package</dt><dd className="mt-1 text-rf-text">{selectedPackage.name} · {selectedPackage.keywords} keywords</dd></div><div><dt className="text-rf-muted">Target page</dt><dd className="mt-1 break-all text-rf-text">{draft.target || 'Not provided'}</dd></div><div><dt className="text-rf-muted">Keywords submitted</dt><dd className="mt-1 text-rf-text">{keywords.length}</dd></div><div><dt className="text-rf-muted">Market and devices</dt><dd className="mt-1 text-rf-text">{draft.location} · {draft.device}</dd></div></dl><label className="mt-6 flex gap-3 text-sm text-rf-muted"><input type="checkbox" checked={draft.consent} onChange={(event) => update('consent', event.target.checked)} className="mt-1 accent-rf-primary" />I understand that rankings depend on search engines, competition, and campaign inputs; results are not guaranteed.</label></section>}
-            {step === 4 && <section><p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 5</p><h2 className="mt-2 text-xl font-semibold text-rf-text">Confirm payment</h2><p className="mt-3 text-sm leading-relaxed text-rf-muted">This demo uses a mock payment step. No card details are stored.</p><div className="mt-6 rounded-xl border border-rf-border bg-rf-surface-soft p-5"><p className="text-sm text-rf-muted">Total due today</p><p className="mt-2 text-4xl font-bold text-rf-text">${selectedPackage.price}</p></div></section>}
+            
+            {step === 4 && (
+              <section>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 5</p>
+                <h2 className="mt-2 text-xl font-semibold text-rf-text">Confirm payment</h2>
+                <div className="mt-6 rounded-xl border border-rf-border bg-rf-surface-soft p-5">
+                  <p className="text-sm text-rf-muted">Total due today</p>
+                  <p className="mt-2 text-4xl font-bold text-rf-text">${selectedPackage.price}</p>
+                </div>
+                
+                {clientSecret ? (
+                  <Elements 
+                    stripe={stripePromise} 
+                    options={{ clientSecret, appearance: { theme: 'night' } }}
+                  >
+                    <StripeCheckoutForm 
+                      orderData={{
+                        packageId: draft.packageId,
+                        packageName: selectedPackage.name,
+                        totalPrice: selectedPackage.price,
+                        website: draft.website,
+                        target: draft.target,
+                        keywords: keywords,
+                        location: draft.location,
+                        language: draft.language,
+                        device: draft.device,
+                        trackingDays: draft.trackingDays,
+                        frequency: draft.frequency,
+                        notes: draft.notes,
+                        engine: 'google',
+                        orderType: 'ranking'
+                      }}
+                      onSuccess={() => {
+                        window.localStorage.removeItem(DRAFT_KEY);
+                        window.location.assign(`/payment-success`); 
+                      }}
+                      onError={(err) => setError(err)}
+                    />
+                  </Elements>
+                ) : (
+                  <p className="text-sm text-rf-muted mt-4">Loading secure payment form...</p>
+                )}
+                {paymentError && <p className="mt-3 text-sm text-rf-danger">{paymentError}</p>}
+              </section>
+            )}
+
             {error && <p role="alert" className="mt-6 rounded-lg border border-rf-danger/40 bg-rf-danger/10 p-3 text-sm text-rf-danger">{error}</p>}
-            <div className="mt-8 flex justify-between gap-3 border-t border-rf-border pt-5"><Button variant="ghost" onClick={() => { setError(''); setStep((current) => Math.max(0, current - 1)) }} disabled={step === 0}>Back</Button><Button onClick={continueStep}>{step === 4 ? 'Confirm campaign' : 'Continue'}</Button></div>
+            
+            {step !== 4 && (
+              <div className="mt-8 flex justify-between gap-3 border-t border-rf-border pt-5">
+                <Button variant="ghost" onClick={() => { setError(''); setStep((current) => Math.max(0, current - 1)) }} disabled={step === 0}>Back</Button>
+                <Button onClick={continueStep}>Continue</Button>
+              </div>
+            )}
+            {step === 4 && (
+              <div className="mt-8 flex justify-start gap-3 border-t border-rf-border pt-5">
+                <Button variant="ghost" onClick={() => { setError(''); setStep((current) => Math.max(0, current - 1)) }}>Back</Button>
+              </div>
+            )}
           </Card>
           <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start"><Card className="p-6"><h2 className="text-lg font-semibold text-rf-text">Order summary</h2><div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-rf-muted">Package</span><span className="text-rf-text">{selectedPackage.name}</span></div><div className="flex justify-between"><span className="text-rf-muted">Keyword allowance</span><span className="text-rf-text">{selectedPackage.keywords}</span></div><div className="flex justify-between"><span className="text-rf-muted">Baseline research</span><span className="text-rf-success">Included</span></div><div className="border-t border-rf-border pt-4"><span className="text-rf-muted">Total</span><p className="mt-1 text-3xl font-bold text-rf-text">${selectedPackage.price}</p></div></div><p className="mt-5 text-xs leading-relaxed text-rf-muted">Rank positions fluctuate and depend on factors outside Rankfasta’s control. You can review everything before payment.</p></Card><Card className="p-5"><p className="text-sm font-semibold text-rf-text">Need help?</p><p className="mt-2 text-sm leading-relaxed text-rf-muted">Talk to your specialist about keyword selection and location targeting.</p></Card></aside>
         </div>

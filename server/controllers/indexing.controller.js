@@ -14,27 +14,37 @@ const createIndexingOrder = async (req, res) => {
       packageId, packageName, totalPrice, 
       website, property, propertyType, sitemap, urls, 
       locale, priority, trackingDays, frequency, notes,
-      paymentIntentId
+      paymentIntentId, engine = 'google'
     } = req.body;
 
     if (!urls || urls.length === 0) {
       return res.status(400).json({ success: false, message: 'Please provide at least one URL' });
     }
 
+    const safeWebsite = website || property || 'N/A';
+    const safeProperty = property || website || 'N/A';
+    const safePropertyType = propertyType || 'Domain';
+    const safeSitemap = sitemap || null;
+    const safeNotes = notes || '';
+    const safeLocale = locale || 'United States · English';
+    const safePriority = priority || 'Standard';
+    const safeTrackingDays = trackingDays || '30';
+    const safeFrequency = frequency || 'Weekly';
+
     const orderId = `GIDX-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const urlsJson = JSON.stringify(urls);
 
     const query = `
       INSERT INTO google_indexing_orders 
-      (user_id, order_id, package_id, package_name, total_price, website, property, property_type, sitemap, urls, total_urls, locale, priority, tracking_days, frequency, notes, payment_intent_id) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (user_id, order_id, package_id, package_name, total_price, website, property, property_type, sitemap, urls, total_urls, locale, priority, tracking_days, frequency, notes, payment_intent_id, engine) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       userId, orderId, packageId, packageName, totalPrice, 
-      website, property, propertyType, sitemap, urlsJson, urls.length, 
-      locale, priority, trackingDays, frequency, notes,
-      paymentIntentId
+      safeWebsite, safeProperty, safePropertyType, safeSitemap, urlsJson, urls.length, 
+      safeLocale, safePriority, safeTrackingDays, safeFrequency, safeNotes,
+      paymentIntentId, engine
     ];
 
     const [result] = await pool.query(query, values);
@@ -45,7 +55,11 @@ const createIndexingOrder = async (req, res) => {
       data: { id: result.insertId, orderId, status: 'pending' }
     });
   } catch (error) {
-    console.error('Error creating indexing order:', error);
+    console.error('--- DATABASE INSERT ERROR ---');
+    console.error('Error Message:', error.message);
+    console.error('SQL Error Code:', error.code);
+    console.error('-----------------------------');
+    
     res.status(500).json({ success: false, message: 'Server error while creating order' });
   }
 };
@@ -95,10 +109,10 @@ const getIndexingOrders = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, engine = 'google' } = req.body;
     const { id } = req.params;
 
-    console.log(`[Backend] Updating order ${id} to status: ${status}`);
+    console.log(`[Backend] Updating order ${id} to status: ${status} for engine: ${engine}`);
 
     const [result] = await pool.query(
       'UPDATE google_indexing_orders SET status = ? WHERE id = ?',
@@ -118,7 +132,7 @@ const updateOrderStatus = async (req, res) => {
         const urls = typeof rows[0].urls === 'string' ? JSON.parse(rows[0].urls) : rows[0].urls;
         console.log(`[Backend] Sending URLs to Rapid Indexer:`, urls);
         
-        const isSuccess = await submitToRapidIndexer(id, urls);
+        const isSuccess = await submitToRapidIndexer(id, urls, engine);
         console.log(`[Backend] Rapid Indexer Result for order ${id}:`, isSuccess ? 'Success' : 'Failed');
       } else {
         console.log(`[Backend] No URLs found for order ${id}`);
@@ -132,8 +146,54 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// NEW FUNCTION: Fetch both Indexing and Ranking orders for the user
+const getAllProjects = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Not authorized' });
+
+    // Fetch Indexing Orders
+    const [indexingOrders] = await pool.query(
+      "SELECT *, 'indexing' as type FROM google_indexing_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // Fetch Ranking Orders
+    const [rankingOrders] = await pool.query(
+      "SELECT *, 'ranking' as type FROM ranking_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // Format both
+    const formattedIndexing = indexingOrders.map(row => ({
+      ...row,
+      urls: typeof row.urls === 'string' ? JSON.parse(row.urls) : row.urls,
+      createdAt: row.created_at,
+      projectName: row.engine === 'bing' ? 'Bing Indexing' : 'Google Indexing'
+    }));
+
+    const formattedRanking = rankingOrders.map(row => ({
+      ...row,
+      keywords: typeof row.keywords === 'string' ? JSON.parse(row.keywords) : row.keywords,
+      createdAt: row.created_at,
+      projectName: 'Google Ranking'
+    }));
+
+    // Combine and sort by date descending
+    const allProjects = [...formattedIndexing, ...formattedRanking].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    res.status(200).json({ success: true, data: allProjects });
+  } catch (error) {
+    console.error('Error fetching all projects:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   createIndexingOrder,
   getIndexingOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  getAllProjects
 };

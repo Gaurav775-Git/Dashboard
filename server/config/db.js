@@ -69,14 +69,40 @@ async function initDb() {
     )
   `);
 
-  // Temporary code to add the Rapid Indexer and Stripe columns automatically
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ranking_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      engine VARCHAR(20) DEFAULT 'google',
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      website VARCHAR(255) NOT NULL,
+      target_page VARCHAR(255) NOT NULL,
+      keywords JSON NOT NULL,
+      total_keywords INT NOT NULL,
+      location VARCHAR(100),
+      language VARCHAR(50),
+      device VARCHAR(50),
+      tracking_days VARCHAR(50),
+      frequency VARCHAR(50),
+      notes TEXT,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      payment_intent_id VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   try {
     await pool.query(`
       ALTER TABLE google_indexing_orders 
       ADD COLUMN rapid_indexer_task_id VARCHAR(255) DEFAULT NULL,
       ADD COLUMN google_api_status VARCHAR(100) DEFAULT 'not_submitted',
       ADD COLUMN google_api_error TEXT DEFAULT NULL,
-      ADD COLUMN payment_intent_id VARCHAR(255) DEFAULT NULL
+      ADD COLUMN payment_intent_id VARCHAR(255) DEFAULT NULL,
+      ADD COLUMN engine VARCHAR(20) DEFAULT 'google'
     `);
     console.log('Columns added to google_indexing_orders');
   } catch (error) {

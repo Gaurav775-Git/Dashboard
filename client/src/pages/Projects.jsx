@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getGoogleIndexingOrders } from '../api/indexingApi'
+import { getAllProjects } from '../api/indexingApi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 
@@ -12,7 +12,7 @@ const Projects = () => {
   useEffect(() => {
     const fetchUserOrders = async () => {
       try {
-        const response = await getGoogleIndexingOrders()
+        const response = await getAllProjects()
         setOrders(response.data)
       } catch (error) {
         console.error("Failed to fetch projects:", error)
@@ -32,7 +32,7 @@ const Projects = () => {
           <h1 className="text-3xl font-bold text-rf-text">My Projects</h1>
           <p className="text-rf-muted mt-2">Manage your active campaigns and view payment history.</p>
         </div>
-        <Button onClick={() => navigate('/services/google-indexing/order')}>
+        <Button onClick={() => navigate('/services')}>
           + New Campaign
         </Button>
       </div>
@@ -44,7 +44,7 @@ const Projects = () => {
       ) : (
         <div className="grid gap-6">
           {orders.map((order) => (
-            <Card key={order.id} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <Card key={`${order.type}-${order.id}`} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <span className="font-mono text-sm text-rf-blue-light">{order.orderId}</span>
@@ -55,29 +55,39 @@ const Projects = () => {
                   }`}>
                     {order.status}
                   </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-rf-surface-2 text-rf-muted border border-rf-border">
+                    {order.projectName}
+                  </span>
                 </div>
                 <h3 className="text-lg font-semibold text-rf-text">{order.website}</h3>
+                
                 <p className="text-sm text-rf-muted mt-1">
-                  {order.totalUrls || order.urls?.length || 0} URLs submitted · {order.packageName || 'Standard'} Package
+                  {order.type === 'indexing' 
+                    ? `${order.totalUrls || order.urls?.length || 0} URLs submitted · ${order.packageName} Package`
+                    : `${order.totalKeywords || order.keywords?.length || 0} Keywords tracked · ${order.packageName} Package`
+                  }
                 </p>
               </div>
 
               <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end">
                 <div>
                   <p className="text-xs text-rf-muted mb-1">Amount Paid</p>
-                  <p className="font-bold text-rf-text">${order.total_price || order.totalPrice || '0.00'}</p>
+                  <p className="font-bold text-rf-text">${order.total_price || '0.00'}</p>
                   {order.payment_intent_id && (
                     <div className="mt-1">
                       <p className="text-[10px] text-rf-success font-semibold">✓ Paid via Stripe</p>
-                      <p className="text-[9px] text-rf-muted font-mono truncate max-w-[120px]" title={order.payment_intent_id}>
-                        {order.payment_intent_id}
-                      </p>
                     </div>
                   )}
                 </div>
                 <Button 
                   variant="secondary" 
-                  onClick={() => navigate(`/projects/google-indexing/${order.id}`)}
+                  onClick={() => {
+                    if (order.type === 'indexing') {
+                      navigate(`/projects/google-indexing/${order.id}`);
+                    } else {
+                      alert('Ranking details page coming soon!');
+                    }
+                  }}
                 >
                   View Details
                 </Button>
