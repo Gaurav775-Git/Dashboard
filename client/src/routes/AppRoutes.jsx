@@ -14,6 +14,7 @@ import VerifyEmail from '../pages/VerifyEmail'
 import NotFound from '../pages/NotFound'
 import Dashboard from '../pages/Dashboard'
 import ComingSoon from '../pages/ComingSoon'
+import Projects from '../pages/Projects'
 import GoogleIndexingOrder from '../pages/GoogleIndexingOrder'
 import GoogleIndexingTracking from '../pages/GoogleIndexingTracking'
 import OrderConfirmation from '../pages/OrderConfirmation'
@@ -27,7 +28,6 @@ import GenericServiceOrder from '../pages/GenericServiceOrder'
 import GenericServiceTracking from '../pages/GenericServiceTracking'
 
 const sections = { 
-  '/projects': 'Projects', 
   '/performance': 'Performance', 
   '/ai-visibility': 'AI Visibility', 
   '/reports': 'Reports', 
@@ -36,7 +36,6 @@ const sections = {
   '/help': 'Help Center' 
 }
 
-// We pass the orderId as a prop instead of using useParams() directly outside
 const Confirmation = () => {
   const { orderId } = useParams();
   return <OrderConfirmation orderId={orderId} />;
@@ -95,12 +94,17 @@ const AppRoutes = () => (
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         
-        {/* This is the new generic success route for Stripe */}
+        {/* Projects Page */}
+        <Route path="/projects" element={<Projects />} />
+        
+        {/* Stripe Success Route */}
         <Route path="/payment-success" element={<OrderSuccess />} />
         
+        {/* Coming Soon for other routes */}
         {Object.entries(sections).map(([path, section]) => (
           <Route key={path} path={path} element={<ComingSoon section={section} />} />
         ))}
+        
         <Route path="/services" element={<Dashboard />} />
         {ServiceRoutes()}
       </Route>

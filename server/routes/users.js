@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const verifyToken = require('../middleware/auth.middleware');
 
-router.get('/', verifyToken, async (req, res) => {
+// Destructure the 'protect' function from the middleware export
+const { protect } = require('../middleware/auth.middleware');
+
+router.get('/', protect, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT id, name, email, created_at FROM users');
     res.json({ success: true, users: rows });

@@ -69,17 +69,17 @@ async function initDb() {
     )
   `);
 
-  // Temporary code to add the Rapid Indexer columns automatically
+  // Temporary code to add the Rapid Indexer and Stripe columns automatically
   try {
     await pool.query(`
       ALTER TABLE google_indexing_orders 
       ADD COLUMN rapid_indexer_task_id VARCHAR(255) DEFAULT NULL,
       ADD COLUMN google_api_status VARCHAR(100) DEFAULT 'not_submitted',
-      ADD COLUMN google_api_error TEXT DEFAULT NULL
+      ADD COLUMN google_api_error TEXT DEFAULT NULL,
+      ADD COLUMN payment_intent_id VARCHAR(255) DEFAULT NULL
     `);
     console.log('Columns added to google_indexing_orders');
   } catch (error) {
-    // If the columns already exist, MySQL throws an error. We ignore it.
     if (error.code !== 'ER_DUP_FIELDNAME') {
       console.error('Error altering table:', error.message);
     }

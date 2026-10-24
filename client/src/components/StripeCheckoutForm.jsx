@@ -18,7 +18,7 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
     setIsProcessing(true);
     setErrorMessage(null);
 
-    // 1. Validate the form inputs (card number, expiry, etc.)
+    // 1. Validate the form inputs
     const { error: submitError } = await elements.submit();
     if (submitError) {
       setErrorMessage(submitError.message);
@@ -32,7 +32,7 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
       confirmParams: {
         return_url: `${window.location.origin}/payment-success`
       },
-      redirect: 'if_required', // Prevents redirect for standard cards, allows it for wallets (Apple Pay etc.)
+      redirect: 'if_required',
     });
 
     if (error) {
@@ -41,10 +41,14 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
       return;
     }
 
-    // 3. If payment succeeded (or is processing), save the order to your MySQL database
+    // 3. If payment succeeded, save the order to MySQL database
     if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
       try {
-        await createGoogleIndexingOrder(orderData);
+        // Pass the paymentIntent.id to the backend
+        await createGoogleIndexingOrder({
+          ...orderData,
+          paymentIntentId: paymentIntent.id 
+        });
         onSuccess();
       } catch (dbError) {
         setErrorMessage('Payment succeeded, but failed to save order to the database. Please contact support.');
