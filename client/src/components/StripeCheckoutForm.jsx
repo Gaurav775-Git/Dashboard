@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { createGoogleIndexingOrder } from '../api/indexingApi';
+import { api } from '../lib/api'; // Using the api instance
 
 const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
   const stripe = useStripe();
@@ -11,14 +11,11 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    if (!stripe || !elements) return;
 
     setIsProcessing(true);
     setErrorMessage(null);
 
-    // 1. Validate the form inputs
     const { error: submitError } = await elements.submit();
     if (submitError) {
       setErrorMessage(submitError.message);
@@ -26,12 +23,9 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
       return;
     }
 
-    // 2. Confirm the payment with Stripe
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/payment-success`
-      },
+      confirmParams: { return_url: `${window.location.origin}/payment-success` },
       redirect: 'if_required',
     });
 
@@ -41,17 +35,19 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
       return;
     }
 
-    // 3. If payment succeeded, save the order to MySQL database
     if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
       try {
-        // Pass the paymentIntent.id to the backend
-        await createGoogleIndexingOrder({
-          ...orderData,
-          paymentIntentId: paymentIntent.id 
-        });
+        const payload = { ...orderData, paymentIntentId: paymentIntent.id };
+        
+        if (orderData.orderType === 'ranking') {
+          await api.post('/services/google-ranking', payload);
+        } else {
+          await api.post('/services/google-indexing', payload);
+        }
+        
         onSuccess();
       } catch (dbError) {
-        setErrorMessage('Payment succeeded, but failed to save order to the database. Please contact support.');
+        setErrorMessage('Payment succeeded, but failed to save order. Please contact support.');
         setIsProcessing(false);
         if (onError) onError(dbError.message);
       }

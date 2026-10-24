@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { getAdminGoogleIndexingOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
+import { getAdminAllOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
 
 const statusColors = {
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -25,7 +25,7 @@ const AdminDashboard = () => {
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
     try {
-      const response = await getAdminGoogleIndexingOrders()
+      const response = await getAdminAllOrders()
       setOrders(response.data)
     } catch (error) {
       console.error("Failed to fetch orders:", error)
@@ -38,10 +38,18 @@ const AdminDashboard = () => {
     fetchOrders(true)
   }, [])
 
-  const handleSubmitToIndexer = async (id) => {
+  const handleSubmitToIndexer = async (id, type) => {
+    if (type === 'ranking') {
+      alert("Ranking campaigns are processed automatically by the system.");
+      return;
+    }
+    
     setSubmittingId(id)
     try {
-      await updateGoogleIndexingStatus(id, 'processing')
+      const order = orders.find(o => o.id === id && o.type === 'indexing');
+      const engine = order?.engine || 'google';
+      
+      await updateGoogleIndexingStatus(id, 'processing', engine)
       
       setTimeout(() => {
         fetchOrders()
@@ -83,11 +91,10 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-white font-sans">
       <div className="mx-auto max-w-7xl">
-
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-slate-400">Manage Google Indexing orders</p>
+            <p className="text-sm text-slate-400">Manage All Campaigns (Indexing & Ranking)</p>
           </div>
           <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
             Live Database Connected
@@ -143,9 +150,9 @@ const AdminDashboard = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-800/50 text-xs uppercase text-slate-400">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Order ID / Date</th>
+                  <th className="px-6 py-4 font-medium">Order ID / Type</th>
                   <th className="px-6 py-4 font-medium">Client</th>
-                  <th className="px-6 py-4 font-medium">Target URLs</th>
+                  <th className="px-6 py-4 font-medium">Target</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
@@ -159,12 +166,10 @@ const AdminDashboard = () => {
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
-                    <tr key={order.id} className="transition hover:bg-slate-800/30">
+                    <tr key={`${order.type}-${order.id}`} className="transition hover:bg-slate-800/30">
                       <td className="px-6 py-4">
                         <div className="font-mono text-xs text-slate-300">{order.orderId}</div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {new Date(order.createdAt).toLocaleString()}
-                        </div>
+                        <div className="mt-1 text-xs text-indigo-400 uppercase">{order.projectName}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-200">{order.userId?.name || 'Guest User'}</div>
@@ -172,25 +177,26 @@ const AdminDashboard = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="max-w-xs truncate text-slate-300">
-                          {order.urls?.[0] || 'No URLs'}
+                          {order.type === 'indexing' 
+                            ? (order.urls?.[0] || 'No URLs')
+                            : (order.keywords?.[0] || 'No Keywords')}
                         </div>
-                        {order.urls?.length > 1 && (
-                          <div className="mt-1 text-xs text-indigo-400">
-                            +{order.urls.length - 1} more
-                          </div>
-                        )}
+                        <div className="mt-1 text-xs text-indigo-400">
+                          {order.type === 'indexing' 
+                            ? `+${(order.urls?.length || 1) - 1} more URLs` 
+                            : `+${(order.keywords?.length || 1) - 1} more Keywords`}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={order.status} />
                       </td>
                       <td className="px-6 py-4 text-right">
-                        
                         <button
-                          onClick={() => handleSubmitToIndexer(order.id)}
-                          disabled={submittingId === order.id || order.status === 'processing' || order.status === 'completed'}
+                          onClick={() => handleSubmitToIndexer(order.id, order.type)}
+                          disabled={order.type === 'ranking' || submittingId === order.id || order.status === 'processing' || order.status === 'completed'}
                           className="mr-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submittingId === order.id ? 'Submitting...' : 'Submit'}
+                          {order.type === 'ranking' ? 'Auto-Tracked' : (submittingId === order.id ? 'Submitting...' : 'Submit')}
                         </button>
                         
                         <button
@@ -199,7 +205,6 @@ const AdminDashboard = () => {
                         >
                           View
                         </button>
-
                       </td>
                     </tr>
                   ))
@@ -223,14 +228,13 @@ const AdminDashboard = () => {
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Meta</h3>
                 <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div className="flex justify-between py-1"><span className="text-slate-400">Order ID</span><span className="font-mono text-xs text-slate-200">{selectedOrder.orderId}</span></div>
+                  <div className="flex justify-between py-1"><span className="text-slate-400">Type</span><span className="font-semibold text-indigo-400">{selectedOrder.projectName}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Status</span><StatusBadge status={selectedOrder.status} /></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Date</span><span className="text-slate-200">{new Date(selectedOrder.createdAt).toLocaleString()}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Client</span><span className="text-slate-200">{selectedOrder.userId?.email || '—'}</span></div>
-                  <div className="flex justify-between py-1"><span className="text-slate-400">Package</span><span className="text-slate-200">{selectedOrder.packageName || 'Standard'}</span></div>
-                  <div className="flex justify-between py-1"><span className="text-slate-400">Amount</span><span className="font-semibold text-emerald-400">${selectedOrder.total_price || selectedOrder.totalPrice || '0.00'}</span></div>
-                  
+                  <div className="flex justify-between py-1"><span className="text-slate-400">Amount</span><span className="font-semibold text-emerald-400">${selectedOrder.total_price || '0.00'}</span></div>
                   <div className="flex justify-between py-1 border-t border-slate-800 mt-1 pt-1">
-                    <span className="text-slate-400">Stripe Payment ID</span>
+                    <span className="text-slate-400">Stripe ID</span>
                     <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]" title={selectedOrder.payment_intent_id}>
                       {selectedOrder.payment_intent_id || 'N/A'}
                     </span>
@@ -239,51 +243,26 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Rapid Indexer API</h3>
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-400">API Status</span>
-                    <span className={`font-semibold capitalize ${selectedOrder.google_api_status === 'submitted' ? 'text-emerald-400' : selectedOrder.google_api_status === 'failed' ? 'text-red-400' : 'text-slate-400'}`}>
-                      {selectedOrder.google_api_status || 'not submitted'}
-                    </span>
-                  </div>
-                  {selectedOrder.rapid_indexer_task_id && (
-                    <div className="flex justify-between py-1">
-                      <span className="text-slate-400">Task ID</span>
-                      <span className="font-mono text-xs text-slate-200">{selectedOrder.rapid_indexer_task_id}</span>
-                    </div>
-                  )}
-                  {selectedOrder.google_api_error && (
-                    <div className="mt-2 pt-2 border-t border-slate-800">
-                      <span className="mb-1 block text-xs text-red-400">Error Details</span>
-                      <p className="text-xs text-slate-300">{selectedOrder.google_api_error}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Submission Data</h3>
                 <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div>
-                    <span className="mb-1 block text-xs text-slate-400">Target URLs</span>
+                    <span className="mb-1 block text-xs text-slate-400">{selectedOrder.type === 'indexing' ? 'Target URLs' : 'Target Keywords'}</span>
                     <div className="space-y-1">
-                      {selectedOrder.urls?.map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-400 hover:underline">
-                          {url}
-                        </a>
-                      )) || 'None'}
+                      {selectedOrder.type === 'indexing' 
+                        ? selectedOrder.urls?.map((url, i) => (
+                            <a key={i} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-400 hover:underline">
+                              {url}
+                            </a>
+                          ))
+                        : selectedOrder.keywords?.map((kw, i) => (
+                            <div key={i} className="block truncate text-indigo-400">{kw}</div>
+                          ))
+                      }
                     </div>
                   </div>
                   <div className="pt-2">
                     <span className="mb-1 block text-xs text-slate-400">Website</span>
                     <span className="text-slate-200">{selectedOrder.website || '—'}</span>
-                  </div>
-                  <div className="pt-2">
-                    <span className="mb-1 block text-xs text-slate-400">Notes</span>
-                    <p className="whitespace-pre-wrap rounded-lg bg-slate-900 p-2 text-xs text-slate-300">
-                      {selectedOrder.notes || 'No notes provided.'}
-                    </p>
                   </div>
                 </div>
               </div>
