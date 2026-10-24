@@ -3,13 +3,17 @@ const router = express.Router();
 
 const { createPaymentIntent } = require('../controllers/payment.controller');
 const { protect } = require('../middleware/auth.middleware');
-const { pool } = require('../config/db'); // Need pool for the inline admin query
+const { getDashboardStats } = require('../controllers/dashboard.controller'); 
+const { pool } = require('../config/db'); 
 
 const { 
   createIndexingOrder, 
   getIndexingOrders, 
   updateOrderStatus 
 } = require('../controllers/indexing.controller');
+
+// Dashboard Stats
+router.get('/dashboard/stats', protect, getDashboardStats);
 
 // Client Routes (Protected by JWT)
 router.route('/google-indexing')
