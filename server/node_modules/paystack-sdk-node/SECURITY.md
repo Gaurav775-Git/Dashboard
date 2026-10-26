@@ -1,0 +1,18 @@
+# Security Policy
+
+## Supported Versions
+
+The following versions of the `paystack-sdk-node` library are currently supported with security updates:
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.8.x   | :white_check_mark: |
+| < 0.8.0 | :x:                |
+
+## Reporting a Vulnerability
+
+We take the security of this SDK seriously. If you discover a security vulnerability within this project, please send an e-mail to **Benson Samaasi** via [dev.bensonsamaasi@gmail.com](mailto:dev.bensonsamaasi@gmail.com).
+
+All security vulnerabilities will be addressed promptly.
+
+Please **do not** disclose security-related issues publicly until we have addressed them.

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
+import { useAuth } from '../context/AuthContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
 import StripeCheckoutForm from '../components/StripeCheckoutForm'
+import { initializePaystack, createStripeIntent } from '../api/paymentsApi'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -35,6 +37,7 @@ const initialDraft = {
 const validUrls = (value) => [...new Set(value.split(/\r?\n|,/).map((url) => url.trim()).filter(Boolean))]
 
 const GoogleIndexingOrder = () => {
+  const { user } = useAuth()
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState(() => {
     try {
@@ -47,6 +50,7 @@ const GoogleIndexingOrder = () => {
   const [saved, setSaved] = useState('Saved just now')
   const [clientSecret, setClientSecret] = useState('')
   const [paymentError, setPaymentError] = useState('')
+  const [isPaystackLoading, setIsPaystackLoading] = useState(false)
 
   const selectedPackage = packages.find((item) => item.id === draft.packageId) || packages[0]
   const urls = useMemo(() => validUrls(draft.urls), [draft.urls])
@@ -69,22 +73,56 @@ const GoogleIndexingOrder = () => {
   // Fetch Stripe Payment Intent when reaching the final step
   useEffect(() => {
     if (step === 4) {
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/services/payments/create-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: selectedPackage.price, currency: 'usd' })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.clientSecret) {
-          setClientSecret(data.clientSecret)
-        } else {
-          setPaymentError(data.error)
-        }
-      })
-      .catch(err => setPaymentError('Failed to initialize payment'))
+      createStripeIntent(selectedPackage.price, 'usd')
+        .then(data => {
+          if (data.clientSecret) {
+            setClientSecret(data.clientSecret)
+          } else {
+            setPaymentError(data.error)
+          }
+        })
+        .catch(err => setPaymentError('Failed to initialize Stripe payment'))
     }
   }, [step, selectedPackage.price])
+
+  const handlePaystackPayment = async () => {
+    setIsPaystackLoading(true)
+    try {
+      // Generate a temporary reference for Paystack
+      const tempOrderId = `PAY-${Date.now()}`
+      
+      const response = await initializePaystack(
+        selectedPackage.price, 
+        user?.email || 'guest@example.com', 
+        tempOrderId
+      )
+      
+      if (response.success && response.checkoutUrl) {
+        // Save draft data to localStorage so we can recover it after Paystack redirects back
+        window.localStorage.setItem('pending_payment_type', 'google-indexing')
+        window.localStorage.setItem('pending_payment_data', JSON.stringify({
+            packageId: draft.packageId,
+            packageName: selectedPackage.name,
+            totalPrice: selectedPackage.price,
+            website: draft.website,
+            property: draft.property,
+            propertyType: draft.propertyType,
+            sitemap: draft.sitemap,
+            urls: urls,
+            locale: draft.locale,
+            priority: draft.priority,
+            trackingDays: draft.trackingDays,
+            frequency: draft.frequency,
+            notes: draft.notes
+        }))
+        
+        window.location.href = response.checkoutUrl
+      }
+    } catch (err) {
+      setPaymentError('Failed to connect to Paystack. Please try again.')
+      setIsPaystackLoading(false)
+    }
+  }
 
   const validate = () => {
     if (step === 1 && (!draft.website || !draft.property || urls.length === 0)) return 'Add your website, verified property, and at least one URL.'
@@ -131,37 +169,59 @@ const GoogleIndexingOrder = () => {
                   <p className="mt-2 text-4xl font-bold text-rf-text">${selectedPackage.price}</p>
                 </div>
                 
-                {clientSecret ? (
-                  <Elements 
-                    stripe={stripePromise} 
-                    options={{ clientSecret, appearance: { theme: 'night' } }}
+                <div className="mt-6 space-y-4">
+                  <p className="text-sm text-rf-muted">Select Payment Method</p>
+                  
+                  {/* Paystack Button */}
+                  <button
+                    onClick={handlePaystackPayment}
+                    disabled={isPaystackLoading}
+                    className="w-full rounded-lg bg-[#00C3F7] px-4 py-3 text-white font-semibold hover:bg-[#00b0e0] disabled:opacity-50 transition-colors flex flex-col items-center justify-center"
                   >
-                    <StripeCheckoutForm 
-                      orderData={{
-                        packageId: draft.packageId,
-                        packageName: selectedPackage.name,
-                        totalPrice: selectedPackage.price,
-                        website: draft.website,
-                        property: draft.property,
-                        propertyType: draft.propertyType,
-                        sitemap: draft.sitemap,
-                        urls: urls,
-                        locale: draft.locale,
-                        priority: draft.priority,
-                        trackingDays: draft.trackingDays,
-                        frequency: draft.frequency,
-                        notes: draft.notes
-                      }}
-                      onSuccess={() => {
-                        window.localStorage.removeItem(DRAFT_KEY);
-                        window.location.assign(`/payment-success`); 
-                      }}
-                      onError={(err) => setError(err)}
-                    />
-                  </Elements>
-                ) : (
-                  <p className="text-sm text-rf-muted mt-4">Loading secure payment form...</p>
-                )}
+                    <span>{isPaystackLoading ? 'Redirecting...' : `Pay with Paystack`}</span>
+                    <span className="text-xs font-normal opacity-80">
+                      (Approx. ₦{(selectedPackage.price * 1500).toLocaleString()})
+                    </span>
+                  </button>
+                  
+                  <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-rf-border"></div>
+                    <span className="flex-shrink-0 mx-4 text-rf-muted text-xs">Or pay with Card (Stripe)</span>
+                    <div className="flex-grow border-t border-rf-border"></div>
+                  </div>
+
+                  {clientSecret ? (
+                    <Elements 
+                      stripe={stripePromise} 
+                      options={{ clientSecret, appearance: { theme: 'night' } }}
+                    >
+                      <StripeCheckoutForm 
+                        orderData={{
+                          packageId: draft.packageId,
+                          packageName: selectedPackage.name,
+                          totalPrice: selectedPackage.price,
+                          website: draft.website,
+                          property: draft.property,
+                          propertyType: draft.propertyType,
+                          sitemap: draft.sitemap,
+                          urls: urls,
+                          locale: draft.locale,
+                          priority: draft.priority,
+                          trackingDays: draft.trackingDays,
+                          frequency: draft.frequency,
+                          notes: draft.notes
+                        }}
+                        onSuccess={() => {
+                          window.localStorage.removeItem(DRAFT_KEY);
+                          window.location.assign(`/payment-success`); 
+                        }}
+                        onError={(err) => setError(err)}
+                      />
+                    </Elements>
+                  ) : (
+                    <p className="text-sm text-rf-muted mt-4">Loading secure card form...</p>
+                  )}
+                </div>
                 {paymentError && <p className="mt-3 text-sm text-rf-danger">{paymentError}</p>}
               </section>
             )}
