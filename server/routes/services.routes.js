@@ -7,7 +7,9 @@ const { getDashboardStats } = require('../controllers/dashboard.controller');
 const { getReports, downloadReport } = require('../controllers/reports.controller');
 const { pool } = require('../config/db'); 
 const { createRankingOrder } = require('../controllers/ranking.controller');
-const { createPaystackSession, verifyPaystackPayment } = require('../controllers/paystack.controller'); // <-- Import Paystack
+const { createPaystackSession, verifyPaystackPayment } = require('../controllers/paystack.controller'); 
+const { createFlutterwaveSession, verifyFlutterwavePayment } = require('../controllers/flutterwave.controller');
+
 
 const { 
   createIndexingOrder, 
@@ -71,5 +73,9 @@ router.get('/admin/all-orders', async (req, res) => {
 
 router.patch('/google-indexing/:id/status', protect, updateOrderStatus); 
 router.post('/payments/create-intent', createPaymentIntent);
+
+router.post('/payments/flutterwave/initialize', protect, createFlutterwaveSession);
+router.get('/payments/flutterwave/verify/:transactionId', protect, verifyFlutterwavePayment);
+
 
 module.exports = router;

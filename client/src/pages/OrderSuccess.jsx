@@ -4,7 +4,7 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { verifyPaystack } from '../api/paymentsApi'
+import { verifyPaystack, verifyFlutterwave } from '../api/paymentsApi'
 import { createGoogleIndexingOrder } from '../api/indexingApi'
 
 const OrderSuccess = () => {
@@ -14,45 +14,59 @@ const OrderSuccess = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const reference = searchParams.get('reference') || searchParams.get('trxref')
-    
-    // Check if this is a redirect from Paystack
-    if (reference) {
+    const paystackReference = searchParams.get('reference') || searchParams.get('trxref')
+    const flwTransactionId = searchParams.get('transaction_id')
+    const flwStatus = searchParams.get('status')
+
+    const processOrder = async (paymentReference) => {
+      const pendingDataStr = window.localStorage.getItem('pending_payment_data')
+      const pendingType = window.localStorage.getItem('pending_payment_type')
+      
+      if (pendingDataStr && pendingType === 'google-indexing') {
+        const orderData = JSON.parse(pendingDataStr)
+        try {
+          await createGoogleIndexingOrder({
+            ...orderData,
+            paymentIntentId: paymentReference
+          })
+          window.localStorage.removeItem('pending_payment_data')
+          window.localStorage.removeItem('pending_payment_type')
+          window.localStorage.removeItem('rankfasta-google-indexing-draft')
+        } catch (err) {
+          console.error("Failed to create order after payment", err)
+          setError("Payment succeeded, but we couldn't save your order. Please contact support.")
+        }
+      }
+    }
+
+    // 1. Check for Paystack
+    if (paystackReference) {
       setVerifying(true)
-      verifyPaystack(reference)
+      verifyPaystack(paystackReference)
         .then(async (res) => {
           if (res.success) {
-            // Payment is valid. Now we check if there is a pending order to create.
-            const pendingDataStr = window.localStorage.getItem('pending_payment_data')
-            const pendingType = window.localStorage.getItem('pending_payment_type')
-            
-            if (pendingDataStr && pendingType === 'google-indexing') {
-              const orderData = JSON.parse(pendingDataStr)
-              try {
-                await createGoogleIndexingOrder({
-                  ...orderData,
-                  paymentIntentId: reference // Store the Paystack reference
-                })
-                // Clean up local storage after successful order creation
-                window.localStorage.removeItem('pending_payment_data')
-                window.localStorage.removeItem('pending_payment_type')
-                window.localStorage.removeItem('rankfasta-google-indexing-draft')
-              } catch (err) {
-                console.error("Failed to create order after payment", err)
-                setError("Payment succeeded, but we couldn't save your order. Please contact support.")
-              }
-            }
+            await processOrder(paystackReference)
           } else {
-            setError("Payment verification failed. Please contact support.")
+            setError("Paystack payment verification failed. Please contact support.")
           }
         })
-        .catch(err => {
-          console.error("Verification error", err)
-          setError("Could not verify payment.")
+        .catch(err => setError("Could not verify Paystack payment."))
+        .finally(() => setVerifying(false))
+    }
+
+    // 2. Check for Flutterwave
+    if (flwTransactionId && flwStatus === 'successful') {
+      setVerifying(true)
+      verifyFlutterwave(flwTransactionId)
+        .then(async (res) => {
+          if (res.success) {
+            await processOrder(flwTransactionId)
+          } else {
+            setError("Flutterwave payment verification failed. Please contact support.")
+          }
         })
-        .finally(() => {
-          setVerifying(false)
-        })
+        .catch(err => setError("Could not verify Flutterwave payment."))
+        .finally(() => setVerifying(false))
     }
   }, [searchParams])
 
