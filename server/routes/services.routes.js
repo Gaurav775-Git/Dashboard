@@ -4,6 +4,7 @@ const router = express.Router();
 const { createPaymentIntent } = require('../controllers/payment.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { getDashboardStats } = require('../controllers/dashboard.controller'); 
+const { getReports, downloadReport } = require('../controllers/reports.controller'); // NEW
 const { pool } = require('../config/db'); 
 const { createRankingOrder } = require('../controllers/ranking.controller');
 
@@ -16,6 +17,10 @@ const {
 
 // Dashboard Stats
 router.get('/dashboard/stats', protect, getDashboardStats);
+
+// Reports Routes
+router.get('/reports', protect, getReports); 
+router.get('/reports/:orderId/download', protect, downloadReport);
 
 // User Projects Route (Combines Indexing + Ranking)
 router.get('/projects/all', protect, getAllProjects);
@@ -31,14 +36,12 @@ router.route('/google-indexing')
 // Admin Route (Fetches ALL orders from BOTH tables)
 router.get('/admin/all-orders', async (req, res) => {
   try {
-    // CHANGED: double quotes to single quotes for 'indexing'
     const [indexing] = await pool.query(`
       SELECT o.*, u.name AS user_name, u.email AS user_email, 'indexing' as type
       FROM google_indexing_orders o
       LEFT JOIN users u ON o.user_id = u.id
     `);
     
-    // CHANGED: double quotes to single quotes for 'ranking'
     const [ranking] = await pool.query(`
       SELECT o.*, u.name AS user_name, u.email AS user_email, 'ranking' as type
       FROM ranking_orders o
