@@ -7,12 +7,13 @@ import Button from '../components/ui/Button'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
 import StripeCheckoutForm from '../components/StripeCheckoutForm'
-import { initializePaystack, initializeFlutterwave, createStripeIntent } from '../api/paymentsApi'
+import { initializePaystack, initializeFlutterwave, initializeCryptomus, createStripeIntent } from '../api/paymentsApi'
 
 // Import the logos from your assets folder
 import stripeLogo from '../assets/Stripe-logo.png'
 import paystackLogo from '../assets/Paystack-logo.png'
 import flutterwaveLogo from '../assets/Flluterwave-logo.png'
+import cryptomusLogo from '../assets/Cryptomus-logo.png'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -59,6 +60,7 @@ const GoogleIndexingOrder = () => {
   const [selectedGateway, setSelectedGateway] = useState('stripe')
   const [isPaystackLoading, setIsPaystackLoading] = useState(false)
   const [isFlutterwaveLoading, setIsFlutterwaveLoading] = useState(false)
+  const [isCryptomusLoading, setIsCryptomusLoading] = useState(false)
 
   const selectedPackage = packages.find((item) => item.id === draft.packageId) || packages[0]
   const urls = useMemo(() => validUrls(draft.urls), [draft.urls])
@@ -136,6 +138,29 @@ const GoogleIndexingOrder = () => {
     } catch (err) {
       setPaymentError('Failed to connect to Flutterwave. Please try again.')
       setIsFlutterwaveLoading(false)
+    }
+  }
+
+  const handleCryptomusPayment = async () => {
+    setIsCryptomusLoading(true)
+    setPaymentError('')
+    try {
+      const tempOrderId = `CRY-${Date.now()}`
+      const response = await initializeCryptomus(selectedPackage.price, user?.email || 'guest@example.com', tempOrderId)
+      
+      if (response.success && response.checkoutUrl) {
+        window.localStorage.setItem('pending_payment_type', 'google-indexing')
+        window.localStorage.setItem('pending_payment_data', JSON.stringify({
+            packageId: draft.packageId, packageName: selectedPackage.name, totalPrice: selectedPackage.price,
+            website: draft.website, property: draft.property, propertyType: draft.propertyType,
+            sitemap: draft.sitemap, urls: urls, locale: draft.locale, priority: draft.priority,
+            trackingDays: draft.trackingDays, frequency: draft.frequency, notes: draft.notes
+        }))
+        window.location.href = response.checkoutUrl
+      }
+    } catch (err) {
+      setPaymentError('Failed to connect to Cryptomus. Please try again.')
+      setIsCryptomusLoading(false)
     }
   }
 
@@ -252,6 +277,27 @@ const GoogleIndexingOrder = () => {
                     </div>
                   </div>
 
+                  {/* Cryptomus Card */}
+                  <div 
+                    onClick={() => setSelectedGateway('cryptomus')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${
+                      selectedGateway === 'cryptomus' ? 'border-[#8B5CF6] bg-[#8B5CF6]/5 ring-1 ring-[#8B5CF6]' : 'border-rf-border bg-rf-bg hover:border-rf-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-16 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1.5">
+                        <img src={cryptomusLogo} alt="Cryptomus" className="h-full w-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rf-text">Cryptomus</p>
+                        <p className="text-xs text-rf-muted">Crypto (BTC, ETH, USDT)</p>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${selectedGateway === 'cryptomus' ? 'border-[#8B5CF6]' : 'border-rf-muted'}`}>
+                      {selectedGateway === 'cryptomus' && <div className="h-2.5 w-2.5 rounded-full bg-[#8B5CF6]" />}
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* Dynamic Payment Action Area */}
@@ -306,6 +352,21 @@ const GoogleIndexingOrder = () => {
                         <span>{isFlutterwaveLoading ? 'Redirecting to Flutterwave...' : `Pay with Flutterwave`}</span>
                         <span className="text-xs font-normal opacity-80 mt-1">
                           (Card, Bank Transfer, Mobile Money)
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedGateway === 'cryptomus' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <button
+                        onClick={handleCryptomusPayment}
+                        disabled={isCryptomusLoading}
+                        className="w-full rounded-lg bg-[#8B5CF6] px-4 py-3 text-white font-semibold hover:bg-[#7C3AED] disabled:opacity-50 transition-colors flex flex-col items-center justify-center"
+                      >
+                        <span>{isCryptomusLoading ? 'Redirecting to Cryptomus...' : `Pay with Cryptomus`}</span>
+                        <span className="text-xs font-normal opacity-80 mt-1">
+                          (BTC, ETH, USDT, etc.)
                         </span>
                       </button>
                     </div>

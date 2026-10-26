@@ -9,6 +9,7 @@ const { pool } = require('../config/db');
 const { createRankingOrder } = require('../controllers/ranking.controller');
 const { createPaystackSession, verifyPaystackPayment } = require('../controllers/paystack.controller'); 
 const { createFlutterwaveSession, verifyFlutterwavePayment } = require('../controllers/flutterwave.controller');
+const { createCryptomusSession, handleCryptomusWebhook } = require('../controllers/cryptomus.controller');
 
 
 const { 
@@ -76,6 +77,10 @@ router.post('/payments/create-intent', createPaymentIntent);
 
 router.post('/payments/flutterwave/initialize', protect, createFlutterwaveSession);
 router.get('/payments/flutterwave/verify/:transactionId', protect, verifyFlutterwavePayment);
+
+router.post('/payments/cryptomus/initialize', protect, createCryptomusSession);
+router.post('/payments/cryptomus/webhook', handleCryptomusWebhook);
+
 
 
 module.exports = router;
