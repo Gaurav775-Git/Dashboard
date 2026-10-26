@@ -4,9 +4,12 @@ const router = express.Router();
 const { createPaymentIntent } = require('../controllers/payment.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { getDashboardStats } = require('../controllers/dashboard.controller'); 
-const { getReports, downloadReport } = require('../controllers/reports.controller'); // NEW
+const { getReports, downloadReport } = require('../controllers/reports.controller');
 const { pool } = require('../config/db'); 
 const { createRankingOrder } = require('../controllers/ranking.controller');
+const { createPaystackSession, verifyPaystackPayment } = require('../controllers/paystack.controller'); 
+const { createFlutterwaveSession, verifyFlutterwavePayment } = require('../controllers/flutterwave.controller');
+
 
 const { 
   createIndexingOrder, 
@@ -15,25 +18,20 @@ const {
   getAllProjects 
 } = require('../controllers/indexing.controller');
 
-// Dashboard Stats
 router.get('/dashboard/stats', protect, getDashboardStats);
-
-// Reports Routes
 router.get('/reports', protect, getReports); 
 router.get('/reports/:orderId/download', protect, downloadReport);
-
-// User Projects Route (Combines Indexing + Ranking)
 router.get('/projects/all', protect, getAllProjects);
-
-// Ranking Routes
 router.post('/google-ranking', protect, createRankingOrder);
 
-// Client Routes (Protected by JWT)
+// Paystack Routes
+router.post('/payments/paystack/initialize', protect, createPaystackSession);
+router.get('/payments/paystack/verify/:reference', protect, verifyPaystackPayment);
+
 router.route('/google-indexing')
   .post(protect, createIndexingOrder)
   .get(protect, getIndexingOrders);
 
-// Admin Route (Fetches ALL orders from BOTH tables)
 router.get('/admin/all-orders', async (req, res) => {
   try {
     const [indexing] = await pool.query(`
@@ -75,5 +73,9 @@ router.get('/admin/all-orders', async (req, res) => {
 
 router.patch('/google-indexing/:id/status', protect, updateOrderStatus); 
 router.post('/payments/create-intent', createPaymentIntent);
+
+router.post('/payments/flutterwave/initialize', protect, createFlutterwaveSession);
+router.get('/payments/flutterwave/verify/:transactionId', protect, verifyFlutterwavePayment);
+
 
 module.exports = router;

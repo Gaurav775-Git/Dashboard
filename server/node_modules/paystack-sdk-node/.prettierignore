@@ -1,0 +1,14 @@
+# Ignore artifacts:
+dist
+coverage
+node_modules
+.bun
+
+# Ignore build output
+*.tsbuildinfo
+
+# Ignore package managers
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
