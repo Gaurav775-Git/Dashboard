@@ -72,13 +72,22 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Fixed: Fetch data on mount AND when the window regains focus
   useEffect(() => {
-    getDashboardStats()
-      .then(res => {
-        setStats(res.data)
-      })
-      .catch(err => console.error("Failed to load dashboard:", err))
-      .finally(() => setLoading(false))
+    const fetchStats = () => {
+      getDashboardStats()
+        .then(res => {
+          setStats(res.data)
+        })
+        .catch(err => console.error("Failed to load dashboard:", err))
+        .finally(() => setLoading(false))
+    }
+
+    fetchStats()
+
+    // Re-fetch when the user tabs back into the window
+    window.addEventListener('focus', fetchStats)
+    return () => window.removeEventListener('focus', fetchStats)
   }, [])
 
   if (tab === 'Services') return <><Navbar activeTab={tab} onNavigate={setTab} /><main className="min-h-screen bg-rf-bg px-5 py-10 pb-24 md:ml-[190px] md:px-10"><ServiceCatalog onOrder={() => setTab('Overview')} /></main></>
@@ -86,7 +95,7 @@ const Dashboard = () => {
   if (loading) return <div className="min-h-screen bg-rf-bg p-10 text-rf-text">Loading dashboard data...</div>
 
   const activeSeries = stats?.graphData || [0, 0, 0, 0, 0, 0, 0]
-  const graphMax = Math.max(...activeSeries, 10) // Prevents flat line if max is 0
+  const graphMax = Math.max(...activeSeries, 10)
 
   const dynamicKpis = [
     { label: 'Total URLs', value: stats?.totalUrls || 0, trend: '+0%', data: activeSeries, icon: 'chart' },

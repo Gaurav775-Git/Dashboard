@@ -15,7 +15,8 @@ import NotFound from '../pages/NotFound'
 import Dashboard from '../pages/Dashboard'
 import ComingSoon from '../pages/ComingSoon'
 import Projects from '../pages/Projects'
-import Reports from '../pages/Reports' // NEW IMPORT
+import Reports from '../pages/Reports'
+import Performance from '../pages/Performance' // NEW IMPORT
 import GoogleIndexingOrder from '../pages/GoogleIndexingOrder'
 import GoogleIndexingTracking from '../pages/GoogleIndexingTracking'
 import OrderConfirmation from '../pages/OrderConfirmation'
@@ -29,9 +30,8 @@ import GenericServiceOrder from '../pages/GenericServiceOrder'
 import GenericServiceTracking from '../pages/GenericServiceTracking'
 
 const sections = { 
-  '/performance': 'Performance', 
+  // '/performance': 'Performance', <-- REMOVED so it doesn't hit the Coming Soon page
   '/ai-visibility': 'AI Visibility', 
-  // '/reports': 'Reports', <-- REMOVED so it doesn't hit the Coming Soon page
   '/messages': 'Messages', 
   '/billing': 'Billing', 
   '/help': 'Help Center' 
@@ -95,16 +95,15 @@ const AppRoutes = () => (
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         
-        {/* Projects Page */}
+        {/* Main Pages */}
         <Route path="/projects" element={<Projects />} />
-        
-        {/* Reports Page */}
         <Route path="/reports" element={<Reports />} />
+        <Route path="/performance" element={<Performance />} />
         
-        {/* Stripe Success Route */}
+        {/* Payment Success Route */}
         <Route path="/payment-success" element={<OrderSuccess />} />
         
-        {/* Coming Soon for other routes */}
+        {/* Coming Soon for remaining routes */}
         {Object.entries(sections).map(([path, section]) => (
           <Route key={path} path={path} element={<ComingSoon section={section} />} />
         ))}
