@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
+import { useAuth } from '../context/AuthContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
 import StripeCheckoutForm from '../components/StripeCheckoutForm'
-import { api } from '../lib/api'
+import { initializePaystack, initializeFlutterwave, initializeCryptomus, createStripeIntent } from '../api/paymentsApi'
+
+import stripeLogo from '../assets/Stripe-logo.png'
+import paystackLogo from '../assets/Paystack-logo.png'
+import flutterwaveLogo from '../assets/Flluterwave-logo.png'
+import cryptomusLogo from '../assets/Cryptomus-logo.png'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -25,6 +31,7 @@ const initialDraft = {
 const parseKeywords = (value) => [...new Set(value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean))]
 
 const GoogleRankingOrder = () => {
+  const { user } = useAuth()
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState(() => {
     try {
@@ -38,6 +45,11 @@ const GoogleRankingOrder = () => {
   const [clientSecret, setClientSecret] = useState('')
   const [paymentError, setPaymentError] = useState('')
   
+  const [selectedGateway, setSelectedGateway] = useState('stripe')
+  const [isPaystackLoading, setIsPaystackLoading] = useState(false)
+  const [isFlutterwaveLoading, setIsFlutterwaveLoading] = useState(false)
+  const [isCryptomusLoading, setIsCryptomusLoading] = useState(false)
+
   const selectedPackage = packages.find((item) => item.id === draft.packageId) || packages[0]
   const keywords = useMemo(() => parseKeywords(draft.keywords), [draft.keywords])
   
@@ -57,11 +69,89 @@ const GoogleRankingOrder = () => {
   // Fetch Stripe Payment Intent when reaching the final step
   useEffect(() => {
     if (step === 4) {
-      api.post('/services/payments/create-intent', { amount: selectedPackage.price, currency: 'usd' })
-        .then(res => setClientSecret(res.data.clientSecret))
-        .catch(err => setPaymentError('Failed to initialize payment'))
+      createStripeIntent(selectedPackage.price, 'usd')
+        .then(data => {
+          if (data.clientSecret) {
+            setClientSecret(data.clientSecret)
+          } else {
+            setPaymentError(data.error)
+          }
+        })
+        .catch(err => setPaymentError('Failed to initialize Stripe payment'))
     }
   }, [step, selectedPackage.price])
+
+  const handlePaystackPayment = async () => {
+    setIsPaystackLoading(true)
+    setPaymentError('')
+    try {
+      const tempOrderId = `PAY-${Date.now()}`
+      const response = await initializePaystack(selectedPackage.price, user?.email || 'guest@example.com', tempOrderId)
+      
+      if (response.success && response.checkoutUrl) {
+        window.localStorage.setItem('pending_payment_type', 'google-ranking')
+        window.localStorage.setItem('pending_payment_data', JSON.stringify({
+            packageId: draft.packageId, packageName: selectedPackage.name, totalPrice: selectedPackage.price,
+            website: draft.website, target: draft.target, keywords: keywords,
+            location: draft.location, language: draft.language, device: draft.device,
+            trackingDays: draft.trackingDays, frequency: draft.frequency, notes: draft.notes,
+            engine: 'google', orderType: 'ranking'
+        }))
+        window.location.href = response.checkoutUrl
+      }
+    } catch (err) {
+      setPaymentError('Failed to connect to Paystack. Please try again.')
+      setIsPaystackLoading(false)
+    }
+  }
+
+  const handleFlutterwavePayment = async () => {
+    setIsFlutterwaveLoading(true)
+    setPaymentError('')
+    try {
+      const tempOrderId = `FLW-${Date.now()}`
+      const response = await initializeFlutterwave(selectedPackage.price, user?.email || 'guest@example.com', tempOrderId)
+      
+      if (response.success && response.checkoutUrl) {
+        window.localStorage.setItem('pending_payment_type', 'google-ranking')
+        window.localStorage.setItem('pending_payment_data', JSON.stringify({
+            packageId: draft.packageId, packageName: selectedPackage.name, totalPrice: selectedPackage.price,
+            website: draft.website, target: draft.target, keywords: keywords,
+            location: draft.location, language: draft.language, device: draft.device,
+            trackingDays: draft.trackingDays, frequency: draft.frequency, notes: draft.notes,
+            engine: 'google', orderType: 'ranking'
+        }))
+        window.location.href = response.checkoutUrl
+      }
+    } catch (err) {
+      setPaymentError('Failed to connect to Flutterwave. Please try again.')
+      setIsFlutterwaveLoading(false)
+    }
+  }
+
+  const handleCryptomusPayment = async () => {
+    setIsCryptomusLoading(true)
+    setPaymentError('')
+    try {
+      const tempOrderId = `CRY-${Date.now()}`
+      const response = await initializeCryptomus(selectedPackage.price, user?.email || 'guest@example.com', tempOrderId)
+      
+      if (response.success && response.checkoutUrl) {
+        window.localStorage.setItem('pending_payment_type', 'google-ranking')
+        window.localStorage.setItem('pending_payment_data', JSON.stringify({
+            packageId: draft.packageId, packageName: selectedPackage.name, totalPrice: selectedPackage.price,
+            website: draft.website, target: draft.target, keywords: keywords,
+            location: draft.location, language: draft.language, device: draft.device,
+            trackingDays: draft.trackingDays, frequency: draft.frequency, notes: draft.notes,
+            engine: 'google', orderType: 'ranking'
+        }))
+        window.location.href = response.checkoutUrl
+      }
+    } catch (err) {
+      setPaymentError('Failed to connect to Cryptomus. Please try again.')
+      setIsCryptomusLoading(false)
+    }
+  }
 
   const continueStep = () => {
     if (step === 1 && (!draft.website || !draft.target || !keywords.length)) {
@@ -100,44 +190,176 @@ const GoogleRankingOrder = () => {
               <section>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-rf-blue-light">Step 5</p>
                 <h2 className="mt-2 text-xl font-semibold text-rf-text">Confirm payment</h2>
-                <div className="mt-6 rounded-xl border border-rf-border bg-rf-surface-soft p-5">
+                <div className="mt-6 rounded-xl border border-rf-border bg-rf-surface-soft p-5 mb-8">
                   <p className="text-sm text-rf-muted">Total due today</p>
                   <p className="mt-2 text-4xl font-bold text-rf-text">${selectedPackage.price}</p>
                 </div>
                 
-                {clientSecret ? (
-                  <Elements 
-                    stripe={stripePromise} 
-                    options={{ clientSecret, appearance: { theme: 'night' } }}
+                <p className="text-sm font-medium text-rf-text mb-3">Select Payment Method</p>
+                
+                <div className="grid gap-3">
+                  
+                  {/* Stripe Card */}
+                  <div 
+                    onClick={() => setSelectedGateway('stripe')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${
+                      selectedGateway === 'stripe' ? 'border-rf-primary bg-rf-primary/5 ring-1 ring-rf-primary' : 'border-rf-border bg-rf-bg hover:border-rf-muted'
+                    }`}
                   >
-                    <StripeCheckoutForm 
-                      orderData={{
-                        packageId: draft.packageId,
-                        packageName: selectedPackage.name,
-                        totalPrice: selectedPackage.price,
-                        website: draft.website,
-                        target: draft.target,
-                        keywords: keywords,
-                        location: draft.location,
-                        language: draft.language,
-                        device: draft.device,
-                        trackingDays: draft.trackingDays,
-                        frequency: draft.frequency,
-                        notes: draft.notes,
-                        engine: 'google',
-                        orderType: 'ranking'
-                      }}
-                      onSuccess={() => {
-                        window.localStorage.removeItem(DRAFT_KEY);
-                        window.location.assign(`/payment-success`); 
-                      }}
-                      onError={(err) => setError(err)}
-                    />
-                  </Elements>
-                ) : (
-                  <p className="text-sm text-rf-muted mt-4">Loading secure payment form...</p>
-                )}
-                {paymentError && <p className="mt-3 text-sm text-rf-danger">{paymentError}</p>}
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-16 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1.5">
+                        <img src={stripeLogo} alt="Stripe" className="h-full w-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rf-text">Credit / Debit Card</p>
+                        <p className="text-xs text-rf-muted">Powered by Stripe</p>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${selectedGateway === 'stripe' ? 'border-rf-primary' : 'border-rf-muted'}`}>
+                      {selectedGateway === 'stripe' && <div className="h-2.5 w-2.5 rounded-full bg-rf-primary" />}
+                    </div>
+                  </div>
+
+                  {/* Paystack Card */}
+                  <div 
+                    onClick={() => setSelectedGateway('paystack')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${
+                      selectedGateway === 'paystack' ? 'border-[#00C3F7] bg-[#00C3F7]/5 ring-1 ring-[#00C3F7]' : 'border-rf-border bg-rf-bg hover:border-rf-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-16 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1.5">
+                        <img src={paystackLogo} alt="Paystack" className="h-full w-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rf-text">Paystack</p>
+                        <p className="text-xs text-rf-muted">Africa & International</p>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${selectedGateway === 'paystack' ? 'border-[#00C3F7]' : 'border-rf-muted'}`}>
+                      {selectedGateway === 'paystack' && <div className="h-2.5 w-2.5 rounded-full bg-[#00C3F7]" />}
+                    </div>
+                  </div>
+
+                  {/* Flutterwave Card */}
+                  <div 
+                    onClick={() => setSelectedGateway('flutterwave')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${
+                      selectedGateway === 'flutterwave' ? 'border-[#F5A623] bg-[#F5A623]/5 ring-1 ring-[#F5A623]' : 'border-rf-border bg-rf-bg hover:border-rf-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-16 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1.5">
+                        <img src={flutterwaveLogo} alt="Flutterwave" className="h-full w-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rf-text">Flutterwave</p>
+                        <p className="text-xs text-rf-muted">Global Payments</p>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${selectedGateway === 'flutterwave' ? 'border-[#F5A623]' : 'border-rf-muted'}`}>
+                      {selectedGateway === 'flutterwave' && <div className="h-2.5 w-2.5 rounded-full bg-[#F5A623]" />}
+                    </div>
+                  </div>
+
+                  {/* Cryptomus Card */}
+                  <div 
+                    onClick={() => setSelectedGateway('cryptomus')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${
+                      selectedGateway === 'cryptomus' ? 'border-[#8B5CF6] bg-[#8B5CF6]/5 ring-1 ring-[#8B5CF6]' : 'border-rf-border bg-rf-bg hover:border-rf-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-16 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1.5">
+                        <img src={cryptomusLogo} alt="Cryptomus" className="h-full w-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rf-text">Cryptomus</p>
+                        <p className="text-xs text-rf-muted">Crypto (BTC, ETH, USDT)</p>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${selectedGateway === 'cryptomus' ? 'border-[#8B5CF6]' : 'border-rf-muted'}`}>
+                      {selectedGateway === 'cryptomus' && <div className="h-2.5 w-2.5 rounded-full bg-[#8B5CF6]" />}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Dynamic Payment Action Area */}
+                <div className="mt-8 pt-6 border-t border-rf-border">
+                  
+                  {selectedGateway === 'stripe' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {clientSecret ? (
+                        <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}>
+                          <StripeCheckoutForm 
+                            orderData={{
+                              packageId: draft.packageId, packageName: selectedPackage.name, totalPrice: selectedPackage.price,
+                              website: draft.website, target: draft.target, keywords: keywords,
+                              location: draft.location, language: draft.language, device: draft.device,
+                              trackingDays: draft.trackingDays, frequency: draft.frequency, notes: draft.notes,
+                              engine: 'google', orderType: 'ranking'
+                            }}
+                            onSuccess={() => {
+                              window.localStorage.removeItem(DRAFT_KEY);
+                              window.location.assign(`/payment-success`); 
+                            }}
+                            onError={(err) => setError(err)}
+                          />
+                        </Elements>
+                      ) : (
+                        <p className="text-sm text-rf-muted animate-pulse">Loading secure card form...</p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedGateway === 'paystack' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <button
+                        onClick={handlePaystackPayment}
+                        disabled={isPaystackLoading}
+                        className="w-full rounded-lg bg-[#00C3F7] px-4 py-3 text-white font-semibold hover:bg-[#00b0e0] disabled:opacity-50 transition-colors flex flex-col items-center justify-center"
+                      >
+                        <span>{isPaystackLoading ? 'Redirecting to Paystack...' : `Pay with Paystack`}</span>
+                        <span className="text-xs font-normal opacity-80 mt-1">
+                          (Approx. ₦{(selectedPackage.price * 1500).toLocaleString()})
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedGateway === 'flutterwave' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <button
+                        onClick={handleFlutterwavePayment}
+                        disabled={isFlutterwaveLoading}
+                        className="w-full rounded-lg bg-[#F5A623] px-4 py-3 text-white font-semibold hover:bg-[#e0961f] disabled:opacity-50 transition-colors flex flex-col items-center justify-center"
+                      >
+                        <span>{isFlutterwaveLoading ? 'Redirecting to Flutterwave...' : `Pay with Flutterwave`}</span>
+                        <span className="text-xs font-normal opacity-80 mt-1">
+                          (Card, Bank Transfer, Mobile Money)
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedGateway === 'cryptomus' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <button
+                        onClick={handleCryptomusPayment}
+                        disabled={isCryptomusLoading}
+                        className="w-full rounded-lg bg-[#8B5CF6] px-4 py-3 text-white font-semibold hover:bg-[#7C3AED] disabled:opacity-50 transition-colors flex flex-col items-center justify-center"
+                      >
+                        <span>{isCryptomusLoading ? 'Redirecting to Cryptomus...' : `Pay with Cryptomus`}</span>
+                        <span className="text-xs font-normal opacity-80 mt-1">
+                          (BTC, ETH, USDT, etc.)
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {paymentError && <p className="mt-4 text-sm text-center text-rf-danger">{paymentError}</p>}
+                </div>
               </section>
             )}
 
@@ -155,7 +377,23 @@ const GoogleRankingOrder = () => {
               </div>
             )}
           </Card>
-          <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start"><Card className="p-6"><h2 className="text-lg font-semibold text-rf-text">Order summary</h2><div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-rf-muted">Package</span><span className="text-rf-text">{selectedPackage.name}</span></div><div className="flex justify-between"><span className="text-rf-muted">Keyword allowance</span><span className="text-rf-text">{selectedPackage.keywords}</span></div><div className="flex justify-between"><span className="text-rf-muted">Baseline research</span><span className="text-rf-success">Included</span></div><div className="border-t border-rf-border pt-4"><span className="text-rf-muted">Total</span><p className="mt-1 text-3xl font-bold text-rf-text">${selectedPackage.price}</p></div></div><p className="mt-5 text-xs leading-relaxed text-rf-muted">Rank positions fluctuate and depend on factors outside Rankfasta’s control. You can review everything before payment.</p></Card><Card className="p-5"><p className="text-sm font-semibold text-rf-text">Need help?</p><p className="mt-2 text-sm leading-relaxed text-rf-muted">Talk to your specialist about keyword selection and location targeting.</p></Card></aside>
+          
+          <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-rf-text">Order summary</h2>
+              <div className="mt-5 space-y-3 text-sm">
+                <div className="flex justify-between gap-3"><span className="text-rf-muted">Package</span><span className="text-rf-text">{selectedPackage.name}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-rf-muted">Keyword allowance</span><span className="text-rf-text">{selectedPackage.keywords}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-rf-muted">Baseline research</span><span className="text-rf-success">Included</span></div>
+                <div className="border-t border-rf-border pt-4"><span className="text-rf-muted">Total</span><p className="mt-1 text-3xl font-bold text-rf-text">${selectedPackage.price}</p></div>
+              </div>
+              <p className="mt-5 text-xs leading-relaxed text-rf-muted">Rank positions fluctuate and depend on factors outside Rankfasta’s control. You can review everything before payment.</p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-sm font-semibold text-rf-text">Need help?</p>
+              <p className="mt-2 text-sm leading-relaxed text-rf-muted">Talk to your specialist about keyword selection and location targeting.</p>
+            </Card>
+          </aside>
         </div>
       </main>
       <Footer />
