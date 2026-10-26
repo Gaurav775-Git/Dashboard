@@ -10,6 +10,8 @@ const { createRankingOrder } = require('../controllers/ranking.controller');
 const { createPaystackSession, verifyPaystackPayment } = require('../controllers/paystack.controller'); 
 const { createFlutterwaveSession, verifyFlutterwavePayment } = require('../controllers/flutterwave.controller');
 const { createCryptomusSession, handleCryptomusWebhook } = require('../controllers/cryptomus.controller');
+const { getPerformanceStats } = require('../controllers/performance.controller');
+
 
 
 const { 
@@ -80,6 +82,8 @@ router.get('/payments/flutterwave/verify/:transactionId', protect, verifyFlutter
 
 router.post('/payments/cryptomus/initialize', protect, createCryptomusSession);
 router.post('/payments/cryptomus/webhook', handleCryptomusWebhook);
+router.get('/performance/stats', protect, getPerformanceStats);
+
 
 
 
