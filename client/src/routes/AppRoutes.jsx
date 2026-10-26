@@ -15,6 +15,7 @@ import NotFound from '../pages/NotFound'
 import Dashboard from '../pages/Dashboard'
 import ComingSoon from '../pages/ComingSoon'
 import Projects from '../pages/Projects'
+import Reports from '../pages/Reports' // NEW IMPORT
 import GoogleIndexingOrder from '../pages/GoogleIndexingOrder'
 import GoogleIndexingTracking from '../pages/GoogleIndexingTracking'
 import OrderConfirmation from '../pages/OrderConfirmation'
@@ -30,7 +31,7 @@ import GenericServiceTracking from '../pages/GenericServiceTracking'
 const sections = { 
   '/performance': 'Performance', 
   '/ai-visibility': 'AI Visibility', 
-  '/reports': 'Reports', 
+  // '/reports': 'Reports', <-- REMOVED so it doesn't hit the Coming Soon page
   '/messages': 'Messages', 
   '/billing': 'Billing', 
   '/help': 'Help Center' 
@@ -96,6 +97,9 @@ const AppRoutes = () => (
         
         {/* Projects Page */}
         <Route path="/projects" element={<Projects />} />
+        
+        {/* Reports Page */}
+        <Route path="/reports" element={<Reports />} />
         
         {/* Stripe Success Route */}
         <Route path="/payment-success" element={<OrderSuccess />} />
