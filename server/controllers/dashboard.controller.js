@@ -8,16 +8,26 @@ const getDashboardStats = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
-    // Fetch all orders for this user
-    const [orders] = await pool.query(
-      'SELECT total_urls, status, created_at FROM google_indexing_orders WHERE user_id = ? ORDER BY created_at ASC',
+    // 1. Fetch Indexing Orders (Google & Bing)
+    const [indexingOrders] = await pool.query(
+      'SELECT total_urls, status, created_at FROM google_indexing_orders WHERE user_id = ?',
       [userId]
     );
+
+    // 2. Fetch Ranking Orders (to count them in "Total Orders")
+    const [rankingOrders] = await pool.query(
+      'SELECT total_keywords, status, created_at FROM ranking_orders WHERE user_id = ?',
+      [userId]
+    );
+
+    // Combine all orders for the total count
+    const allOrders = [...indexingOrders, ...rankingOrders];
 
     let totalUrls = 0;
     let completedUrls = 0;
     
-    orders.forEach(order => {
+    // Calculate URL stats based ONLY on indexing orders
+    indexingOrders.forEach(order => {
       totalUrls += order.total_urls || 0;
       if (order.status === 'completed') {
         completedUrls += order.total_urls || 0;
@@ -36,7 +46,8 @@ const getDashboardStats = async (req, res) => {
       const dateStr = d.toISOString().split('T')[0];
       last7Days.push(dateStr);
       
-      const dayTotal = orders
+      // Count URLs submitted on this specific day
+      const dayTotal = indexingOrders
         .filter(o => new Date(o.created_at).toISOString().split('T')[0] === dateStr)
         .reduce((sum, o) => sum + (o.total_urls || 0), 0);
         
@@ -49,7 +60,7 @@ const getDashboardStats = async (req, res) => {
         visibilityScore,
         totalUrls,
         completedUrls,
-        totalOrders: orders.length,
+        totalOrders: allOrders.length, // Now includes both Indexing and Ranking orders
         graphData,
         dates: last7Days
       }
