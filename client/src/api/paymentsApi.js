@@ -24,3 +24,8 @@ export const verifyFlutterwave = async (transactionId) => {
   const response = await api.get(`/services/payments/flutterwave/verify/${transactionId}`)
   return response.data
 }
+
+export const initializeCryptomus = async (amount, email, orderId) => {
+  const response = await api.post('/services/payments/cryptomus/initialize', { amount, email, orderId })
+  return response.data
+}

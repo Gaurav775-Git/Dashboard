@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAllProjects } from '../api/indexingApi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import { FiArrowLeft } from 'react-icons/fi'
 
 const Projects = () => {
   const [orders, setOrders] = useState([])
@@ -27,6 +28,18 @@ const Projects = () => {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
+      
+      {/* Back Button */}
+      <div className="mb-6">
+        <button 
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-sm font-medium text-rf-muted hover:text-rf-text transition-colors w-fit"
+        >
+          <FiArrowLeft />
+          Back to Dashboard
+        </button>
+      </div>
+
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-rf-text">My Projects</h1>
@@ -75,7 +88,7 @@ const Projects = () => {
                   <p className="font-bold text-rf-text">${order.total_price || '0.00'}</p>
                   {order.payment_intent_id && (
                     <div className="mt-1">
-                      <p className="text-[10px] text-rf-success font-semibold">✓ Paid via Stripe</p>
+                      <p className="text-[10px] text-rf-success font-semibold">✓ Paid</p>
                     </div>
                   )}
                 </div>
