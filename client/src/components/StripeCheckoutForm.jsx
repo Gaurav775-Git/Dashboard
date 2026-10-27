@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { api } from '../lib/api'; // Using the api instance
+import { api } from '../lib/api';
 
 const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
   const stripe = useStripe();
@@ -10,7 +10,6 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     if (!stripe || !elements) return;
 
     setIsProcessing(true);
@@ -38,15 +37,20 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
     if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
       try {
         const payload = { ...orderData, paymentIntentId: paymentIntent.id };
+        let response;
         
         if (orderData.orderType === 'ranking') {
-          await api.post('/services/google-ranking', payload);
+          response = await api.post('/services/google-ranking', payload);
+        } else if (orderData.orderType === 'chatgpt') {
+          response = await api.post('/services/chatgpt-order', payload);
         } else {
-          await api.post('/services/google-indexing', payload);
+          response = await api.post('/services/google-indexing', payload);
         }
         
-        onSuccess();
+        // Pass the new orderId to the parent component
+        onSuccess(response.data.data?.orderId || response.data.data?.id || '');
       } catch (dbError) {
+        console.error(dbError);
         setErrorMessage('Payment succeeded, but failed to save order. Please contact support.');
         setIsProcessing(false);
         if (onError) onError(dbError.message);

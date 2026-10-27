@@ -14,7 +14,9 @@ const Projects = () => {
     const fetchUserOrders = async () => {
       try {
         const response = await getAllProjects()
-        setOrders(response.data)
+        // Handle both { data: [...] } and direct array
+        const actualData = response.data || response
+        setOrders(Array.isArray(actualData) ? actualData : [])
       } catch (error) {
         console.error("Failed to fetch projects:", error)
       } finally {
@@ -23,6 +25,17 @@ const Projects = () => {
     }
     fetchUserOrders()
   }, [])
+
+  // Unified routing logic based on order type
+  const handleViewDetails = (order) => {
+    if (order.type === 'chatgpt') {
+      navigate(`/projects/chatgpt-citations/${order.orderId}`)
+    } else if (order.type === 'ranking') {
+      navigate(`/projects/google-ranking/${order.orderId}`)
+    } else {
+      navigate(`/projects/google-indexing/${order.orderId}`)
+    }
+  }
 
   if (loading) return <div className="p-10 text-rf-text">Loading your projects...</div>
 
@@ -59,7 +72,7 @@ const Projects = () => {
           {orders.map((order) => (
             <Card key={`${order.type}-${order.id}`} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <span className="font-mono text-sm text-rf-blue-light">{order.orderId}</span>
                   <span className={`text-xs px-2 py-1 rounded-full capitalize ${
                     order.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
@@ -72,13 +85,14 @@ const Projects = () => {
                     {order.projectName}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-rf-text">{order.website}</h3>
                 
+                <h3 className="text-lg font-semibold text-rf-text truncate max-w-lg">{order.website}</h3>
+                
+                {/* Conditional Stats Display */}
                 <p className="text-sm text-rf-muted mt-1">
-                  {order.type === 'indexing' 
-                    ? `${order.totalUrls || order.urls?.length || 0} URLs submitted · ${order.packageName} Package`
-                    : `${order.totalKeywords || order.keywords?.length || 0} Keywords tracked · ${order.packageName} Package`
-                  }
+                  {order.type === 'indexing' && `${order.totalUrls || 0} URLs submitted · ${order.packageName}`}
+                  {order.type === 'ranking' && `${order.totalKeywords || 0} Keywords tracked · ${order.packageName}`}
+                  {order.type === 'chatgpt' && `${order.totalPrompts || 0} Prompts monitored · ${order.packageName}`}
                 </p>
               </div>
 
@@ -94,13 +108,7 @@ const Projects = () => {
                 </div>
                 <Button 
                   variant="secondary" 
-                  onClick={() => {
-                    if (order.type === 'indexing') {
-                      navigate(`/projects/google-indexing/${order.id}`);
-                    } else {
-                      alert('Ranking details page coming soon!');
-                    }
-                  }}
+                  onClick={() => handleViewDetails(order)}
                 >
                   View Details
                 </Button>

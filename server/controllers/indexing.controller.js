@@ -146,25 +146,31 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// NEW FUNCTION: Fetch both Indexing and Ranking orders for the user
+// FIXED: Fetch Indexing, Ranking, AND ChatGPT orders
 const getAllProjects = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: 'Not authorized' });
 
-    // Fetch Indexing Orders
+    // 1. Fetch Indexing Orders
     const [indexingOrders] = await pool.query(
       "SELECT *, 'indexing' as type FROM google_indexing_orders WHERE user_id = ?",
       [userId]
     );
 
-    // Fetch Ranking Orders
+    // 2. Fetch Ranking Orders
     const [rankingOrders] = await pool.query(
       "SELECT *, 'ranking' as type FROM ranking_orders WHERE user_id = ?",
       [userId]
     );
 
-    // Format both
+    // 3. Fetch ChatGPT Orders
+    const [chatgptOrders] = await pool.query(
+      "SELECT *, 'chatgpt' as type FROM chatgpt_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // Format Indexing
     const formattedIndexing = indexingOrders.map(row => ({
       ...row,
       urls: typeof row.urls === 'string' ? JSON.parse(row.urls) : row.urls,
@@ -172,6 +178,7 @@ const getAllProjects = async (req, res) => {
       projectName: row.engine === 'bing' ? 'Bing Indexing' : 'Google Indexing'
     }));
 
+    // Format Ranking
     const formattedRanking = rankingOrders.map(row => ({
       ...row,
       keywords: typeof row.keywords === 'string' ? JSON.parse(row.keywords) : row.keywords,
@@ -179,8 +186,16 @@ const getAllProjects = async (req, res) => {
       projectName: 'Google Ranking'
     }));
 
-    // Combine and sort by date descending
-    const allProjects = [...formattedIndexing, ...formattedRanking].sort(
+    // Format ChatGPT
+    const formattedChatgpt = chatgptOrders.map(row => ({
+      ...row,
+      prompts: typeof row.prompts === 'string' ? JSON.parse(row.prompts) : row.prompts,
+      createdAt: row.created_at,
+      projectName: 'ChatGPT Visibility'
+    }));
+
+    // Combine all and sort by newest
+    const allProjects = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 

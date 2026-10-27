@@ -33,6 +33,7 @@ const pool = mysql.createPool({
 });
 
 async function initDb() {
+  // 1. Users Table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -43,6 +44,7 @@ async function initDb() {
     )
   `);
 
+  // 2. Indexing Orders Table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS google_indexing_orders (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -69,6 +71,7 @@ async function initDb() {
     )
   `);
 
+  // 3. Ranking Orders Table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ranking_orders (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -95,6 +98,30 @@ async function initDb() {
     )
   `);
 
+  // 4. ChatGPT Recommendations Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS chatgpt_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      website VARCHAR(255) NOT NULL,
+      prompts JSON NOT NULL,
+      total_prompts INT NOT NULL,
+      competitors JSON,
+      target_market VARCHAR(100),
+      notes TEXT,
+      trueranker_project_id VARCHAR(100) DEFAULT NULL,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      payment_intent_id VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 5. Safely Alter Tables for new columns (FIXED TO INCLUDE CHATGPT)
   try {
     await pool.query(`
       ALTER TABLE google_indexing_orders 
@@ -107,7 +134,21 @@ async function initDb() {
     console.log('Columns added to google_indexing_orders');
   } catch (error) {
     if (error.code !== 'ER_DUP_FIELDNAME') {
-      console.error('Error altering table:', error.message);
+      console.error('Error altering google_indexing_orders:', error.message);
+    }
+  }
+
+  // 👇 FIX: Safely alter chatgpt_orders in case it was created earlier without the TrueRanker ID 👇
+  try {
+    await pool.query(`
+      ALTER TABLE chatgpt_orders 
+      ADD COLUMN trueranker_project_id VARCHAR(100) DEFAULT NULL,
+      ADD COLUMN payment_intent_id VARCHAR(255) DEFAULT NULL
+    `);
+    console.log('Columns added to chatgpt_orders');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') {
+      console.error('Error altering chatgpt_orders:', error.message);
     }
   }
   
