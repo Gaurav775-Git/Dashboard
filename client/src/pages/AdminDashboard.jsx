@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { getAdminAllOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
+import { submitChatGptToTrueRanker } from '../api/chatgptApi'
+import { api } from '../lib/api'
 
 const statusColors = {
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -20,7 +22,11 @@ const AdminDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
-  const [submittingId, setSubmittingId] = useState(null)
+  
+  // Submission States
+  const [trProjectId, setTrProjectId] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
@@ -38,26 +44,37 @@ const AdminDashboard = () => {
     fetchOrders(true)
   }, [])
 
-  const handleSubmitToIndexer = async (id, type) => {
-    if (type === 'ranking') {
-      alert("Ranking campaigns are processed automatically by the system.");
-      return;
-    }
+  const handleManualSubmit = async () => {
+    setIsSubmitting(true)
+    setSubmitError('')
     
-    setSubmittingId(id)
     try {
-      const order = orders.find(o => o.id === id && o.type === 'indexing');
-      const engine = order?.engine || 'google';
+      if (selectedOrder.type === 'chatgpt') {
+        if (!trProjectId.trim()) throw new Error('TrueRanker Project ID is required')
+        await submitChatGptToTrueRanker(selectedOrder.orderId, trProjectId)
+      } else if (selectedOrder.type === 'indexing') {
+        // Call the existing indexing API
+        const engine = selectedOrder.engine || 'google';
+        await updateGoogleIndexingStatus(selectedOrder.id, 'processing', engine)
+      } else if (selectedOrder.type === 'ranking') {
+        // Call a generic ranking API (you can replace this endpoint with your actual ranking trigger)
+        await api.post('/services/admin/orders/trigger-api', { 
+          orderId: selectedOrder.orderId, 
+          type: 'ranking' 
+        })
+      }
       
-      await updateGoogleIndexingStatus(id, 'processing', engine)
+      // Update local state instantly
+      setOrders(orders.map(o => 
+        o.orderId === selectedOrder.orderId ? { ...o, status: 'processing' } : o
+      ))
       
-      setTimeout(() => {
-        fetchOrders()
-        setSubmittingId(null)
-      }, 3000)
+      setSelectedOrder(null)
+      setTrProjectId('')
     } catch (error) {
-      alert("Failed to submit to Rapid Indexer: " + error.message)
-      setSubmittingId(null)
+      setSubmitError(error.response?.data?.message || error.message || 'Failed to submit')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -94,13 +111,11 @@ const AdminDashboard = () => {
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-slate-400">Manage All Campaigns (Indexing & Ranking)</p>
+            <p className="text-sm text-slate-400">Manage All Campaigns & Trigger APIs</p>
           </div>
-          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-            Live Database Connected
-          </span>
         </div>
 
+        {/* KPIs */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-sm font-medium text-slate-400">Total Orders</p>
@@ -120,6 +135,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:flex-row sm:items-center">
           <div className="flex-1">
             <input
@@ -145,6 +161,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -179,31 +196,39 @@ const AdminDashboard = () => {
                         <div className="max-w-xs truncate text-slate-300">
                           {order.type === 'indexing' 
                             ? (order.urls?.[0] || 'No URLs')
+                            : order.type === 'chatgpt'
+                            ? (order.website || 'No Website')
                             : (order.keywords?.[0] || 'No Keywords')}
                         </div>
-                        <div className="mt-1 text-xs text-indigo-400">
-                          {order.type === 'indexing' 
-                            ? `+${(order.urls?.length || 1) - 1} more URLs` 
-                            : `+${(order.keywords?.length || 1) - 1} more Keywords`}
-                        </div>
+                        {order.type === 'chatgpt' && (
+                          <div className="mt-1 text-xs text-emerald-400">
+                            {order.prompts?.length || 0} Prompts
+                          </div>
+                        )}
+                        {order.type === 'indexing' && (
+                          <div className="mt-1 text-xs text-indigo-400">
+                            +{(order.urls?.length || 1) - 1} more URLs
+                          </div>
+                        )}
+                        {order.type === 'ranking' && (
+                          <div className="mt-1 text-xs text-indigo-400">
+                            +{(order.keywords?.length || 1) - 1} more Keywords
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={order.status} />
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
-                          onClick={() => handleSubmitToIndexer(order.id, order.type)}
-                          disabled={order.type === 'ranking' || submittingId === order.id || order.status === 'processing' || order.status === 'completed'}
-                          className="mr-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {order.type === 'ranking' ? 'Auto-Tracked' : (submittingId === order.id ? 'Submitting...' : 'Submit')}
-                        </button>
-                        
-                        <button
-                          onClick={() => setSelectedOrder(order)}
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setTrProjectId(order.trueranker_project_id || '');
+                            setSubmitError('');
+                          }}
                           className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
                         >
-                          View
+                          Manage
                         </button>
                       </td>
                     </tr>
@@ -215,15 +240,17 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* DRAWER */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
           <div className="h-full w-full max-w-md overflow-y-auto border-l border-slate-800 bg-slate-900 p-6 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Order Details</h2>
+              <h2 className="text-lg font-bold text-white">Manage Order</h2>
               <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
             <div className="space-y-6">
+              {/* Meta */}
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Meta</h3>
                 <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
@@ -232,27 +259,25 @@ const AdminDashboard = () => {
                   <div className="flex justify-between py-1"><span className="text-slate-400">Status</span><StatusBadge status={selectedOrder.status} /></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Date</span><span className="text-slate-200">{new Date(selectedOrder.createdAt).toLocaleString()}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Client</span><span className="text-slate-200">{selectedOrder.userId?.email || '—'}</span></div>
-                  <div className="flex justify-between py-1"><span className="text-slate-400">Amount</span><span className="font-semibold text-emerald-400">${selectedOrder.total_price || '0.00'}</span></div>
-                  <div className="flex justify-between py-1 border-t border-slate-800 mt-1 pt-1">
-                    <span className="text-slate-400">Stripe ID</span>
-                    <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]" title={selectedOrder.payment_intent_id}>
-                      {selectedOrder.payment_intent_id || 'N/A'}
-                    </span>
-                  </div>
                 </div>
               </div>
 
+              {/* Submission Data */}
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Submission Data</h3>
                 <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div>
-                    <span className="mb-1 block text-xs text-slate-400">{selectedOrder.type === 'indexing' ? 'Target URLs' : 'Target Keywords'}</span>
+                    <span className="mb-1 block text-xs text-slate-400">
+                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' ? 'Tracked Prompts' : 'Target Keywords'}
+                    </span>
                     <div className="space-y-1">
                       {selectedOrder.type === 'indexing' 
                         ? selectedOrder.urls?.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-400 hover:underline">
-                              {url}
-                            </a>
+                            <a key={i} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-400 hover:underline">{url}</a>
+                          ))
+                        : selectedOrder.type === 'chatgpt'
+                        ? selectedOrder.prompts?.map((prompt, i) => (
+                            <div key={i} className="block truncate text-indigo-400">"{prompt}"</div>
                           ))
                         : selectedOrder.keywords?.map((kw, i) => (
                             <div key={i} className="block truncate text-indigo-400">{kw}</div>
@@ -266,11 +291,64 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
+
+              {/* MANUAL SUBMISSION BLOCK */}
+              <div className="mt-6 border-t border-slate-800 pt-6">
+                <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-emerald-500">
+                  Manual API Submission
+                </h3>
+                
+                {selectedOrder.status === 'processing' || selectedOrder.status === 'completed' ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
+                    <p className="text-emerald-400 font-medium">This order is already {selectedOrder.status}.</p>
+                    {selectedOrder.type === 'chatgpt' && selectedOrder.trueranker_project_id && (
+                      <p className="text-xs text-slate-300 mt-1">Project ID: <span className="font-mono">{selectedOrder.trueranker_project_id}</span></p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
+                    
+                    {selectedOrder.type === 'chatgpt' && (
+                      <div className="mb-3">
+                        <label className="block text-xs text-slate-400 mb-2">TrueRanker Project ID:</label>
+                        <input 
+                          type="text" 
+                          value={trProjectId}
+                          onChange={(e) => setTrProjectId(e.target.value)}
+                          placeholder="e.g. 12345"
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    )}
+
+                    {selectedOrder.type === 'indexing' && (
+                      <p className="text-xs text-slate-400 mb-3">Ready to submit to Rapid Indexer?</p>
+                    )}
+
+                    {selectedOrder.type === 'ranking' && (
+                      <p className="text-xs text-slate-400 mb-3">Ready to submit to Ranking API?</p>
+                    )}
+
+                    {submitError && <p className="text-red-400 text-xs mb-2">{submitError}</p>}
+
+                    <button
+                      onClick={handleManualSubmit}
+                      disabled={isSubmitting}
+                      className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {isSubmitting 
+                        ? 'Submitting...' 
+                        : `Submit to ${selectedOrder.type === 'chatgpt' ? 'TrueRanker' : selectedOrder.type === 'indexing' ? 'Indexer' : 'Ranking API'}`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
             </div>
 
             <button
               onClick={() => setSelectedOrder(null)}
-              className="mt-8 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+              className="mt-8 w-full rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"
             >
               Close
             </button>

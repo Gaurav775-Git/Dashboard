@@ -9,22 +9,9 @@ import { getDashboardStats } from '../services/dashboardApi'
 import { formatRange, readRange } from '../lib/dateRange'
 import { useAuth } from '../context/AuthContext'
 import {
-  FiActivity,
-  FiArrowUpRight,
-  FiBarChart2,
-  FiBell,
-  FiCalendar,
-  FiChevronRight,
-  FiChevronDown,
-  FiDatabase,
-  FiInfo,
-  FiLayers,
-  FiMessageCircle,
-  FiPlus,
-  FiSearch,
-  FiSettings,
-  FiStar,
-  FiTarget,
+  FiActivity, FiArrowUpRight, FiBarChart2, FiBell, FiCalendar, FiChevronRight,
+  FiChevronDown, FiDatabase, FiInfo, FiLayers, FiMessageCircle, FiPlus,
+  FiSearch, FiSettings, FiStar, FiTarget,
 } from 'react-icons/fi'
 
 const points = (data, max, width = 620, height = 130) => {
@@ -43,16 +30,7 @@ const Sparkline = ({ data }) => {
 const IconTile = ({ children }) => <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rf-surface-2 text-lg text-rf-primary-light">{children}</span>
 
 const DashboardIcon = ({ name, className = 'h-5 w-5' }) => {
-  const icons = {
-    search: FiSearch,
-    chart: FiBarChart2,
-    sparkle: FiStar,
-    database: FiDatabase,
-    ranking: FiTarget,
-    audit: FiSettings,
-    knowledge: FiLayers,
-    message: FiMessageCircle,
-  }
+  const icons = { search: FiSearch, chart: FiBarChart2, sparkle: FiStar, database: FiDatabase, ranking: FiTarget, audit: FiSettings, knowledge: FiLayers, message: FiMessageCircle }
   const Icon = icons[name] || FiActivity
   return <Icon className={className} aria-hidden="true" />
 }
@@ -72,20 +50,19 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Fixed: Fetch data on mount AND when the window regains focus
   useEffect(() => {
-    const fetchStats = () => {
-      getDashboardStats()
-        .then(res => {
-          setStats(res.data)
-        })
-        .catch(err => console.error("Failed to load dashboard:", err))
-        .finally(() => setLoading(false))
+    const fetchStats = async () => {
+      try {
+        const statsData = await getDashboardStats()
+        setStats(statsData)
+      } catch (err) {
+        console.error("Failed to load dashboard:", err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchStats()
-
-    // Re-fetch when the user tabs back into the window
     window.addEventListener('focus', fetchStats)
     return () => window.removeEventListener('focus', fetchStats)
   }, [])
@@ -104,6 +81,12 @@ const Dashboard = () => {
     { label: 'Success Rate', value: `${stats?.visibilityScore || 0}%`, trend: '+0%', data: activeSeries, icon: 'database' },
   ]
 
+  const getProjectLink = (project) => {
+    if (project.type === 'chatgpt') return `/projects/chatgpt-citations/${project.order_id}`
+    if (project.type === 'ranking') return `/projects/google-ranking/${project.order_id}`
+    return `/projects/google-indexing/${project.order_id}`
+  }
+
   return <div className="min-h-screen bg-rf-bg"><Navbar activeTab={tab} onNavigate={setTab} /><main className="mx-auto w-full max-w-[1250px] px-5 py-6 pb-24 md:ml-[190px] md:px-[21px] md:pb-8">
     <header className="mb-6 flex flex-wrap items-start justify-between gap-5"><div><h1 className="text-3xl font-bold tracking-tight text-rf-text md:text-[40px]">{greeting}, {firstName}</h1><p className="mt-2 text-base text-rf-muted md:text-lg">Your visibility is moving in the right direction.</p></div><div className="flex items-center gap-3"><div className="relative"><button type="button" onClick={() => setShowRange((current) => !current)} className="hidden h-11 items-center gap-2 rounded-xl border border-rf-border bg-rf-surface px-3 text-sm text-rf-text sm:flex"><FiCalendar className="h-4 w-4" aria-hidden="true" /> {formatRange(range)}<FiChevronDown className="h-4 w-4" aria-hidden="true" /></button>{showRange && <DateRangePicker range={range} onApply={setRange} onClose={() => setShowRange(false)} />}</div><div className="relative"><button type="button" aria-label="Notifications" onClick={() => setShowNotifications((current) => !current)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-rf-border bg-rf-surface text-lg text-rf-text"><FiBell className="h-5 w-5" aria-hidden="true" />{notifications.some((item) => item.unread) && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rf-danger" />}</button>{showNotifications && <NotificationsPopover notifications={notifications} onRead={(item) => { setNotifications((current) => current.map((entry) => entry.id === item.id ? { ...entry, unread: false } : entry)); window.location.assign(item.href) }} onClose={() => setShowNotifications(false)} />}</div><Button onClick={() => window.location.assign('/services')}><FiPlus className="h-4 w-4" aria-hidden="true" /> New Campaign</Button></div></header>
     
@@ -112,12 +95,43 @@ const Dashboard = () => {
     <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{dynamicKpis.map((item) => <button type="button" key={item.label} className={`text-left`}><Card className="relative min-h-[130px] overflow-hidden p-5"><div className="flex items-center gap-3"><IconTile><DashboardIcon name={item.icon} /></IconTile><span className="text-sm font-medium text-rf-text">{item.label}</span></div><div className="mt-3 flex items-center gap-3"><span className="text-3xl font-bold text-rf-text">{item.value}</span></div><Sparkline data={item.data} /></Card></button>)}</div>
 
     <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_.98fr]">
+      
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-rf-text">Active Campaigns</h2>
           <button type="button" onClick={() => window.location.assign('/projects')} className="inline-flex items-center gap-1 text-xs font-semibold text-rf-primary">View all <FiChevronRight className="h-3 w-3" aria-hidden="true" /></button>
         </div>
-        <div className="py-4 text-sm text-rf-muted">Go to Projects to manage your campaigns.</div>
+        
+        <div className="mt-4 space-y-3">
+          {stats?.recentProjects && stats.recentProjects.length > 0 ? (
+            stats.recentProjects.map((project) => (
+              <div 
+                key={`${project.type}-${project.order_id}`} 
+                onClick={() => window.location.assign(getProjectLink(project))} 
+                className="group flex cursor-pointer items-center justify-between rounded-xl border border-rf-border bg-rf-surface-2 p-3 transition hover:border-rf-primary hover:bg-rf-surface"
+              >
+                <div>
+                  <p className="font-mono text-xs text-rf-muted">{project.order_id}</p>
+                  <p className="mt-1 font-medium text-rf-text truncate max-w-[200px]">{project.website}</p>
+                </div>
+                <div className="text-right">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    project.status === 'completed' ? 'bg-rf-success/10 text-rf-success' :
+                    project.status === 'processing' ? 'bg-blue-500/10 text-blue-400' :
+                    'bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {project.status}
+                  </span>
+                  <p className="mt-1 text-[10px] text-rf-muted uppercase">
+                    {project.type === 'chatgpt' ? 'AI Visibility' : project.type === 'ranking' ? 'Ranking' : 'Indexing'}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-4 text-sm text-rf-muted">No active campaigns. <button onClick={() => window.location.assign('/services')} className="text-rf-primary hover:underline">Create a new one!</button></div>
+          )}
+        </div>
       </Card>
       
       <Card className="p-5"><h2 className="text-lg font-semibold text-rf-text">Channel Performance <FiInfo className="ml-1 inline h-4 w-4 text-rf-muted" aria-hidden="true" /></h2><div className="mt-4 flex items-center gap-4"><div className="flex-1 space-y-4"><div><div className="mb-1 flex items-center justify-between text-xs text-rf-muted"><span className="flex items-center gap-2"><DashboardIcon name="search" className="h-3.5 w-3.5 text-rf-primary" />Google</span><span>100%</span></div><div className="h-1.5 rounded-full bg-rf-surface-2"><div className="h-1.5 rounded-full bg-rf-primary" style={{ width: `100%` }} /></div></div></div><div className="shrink-0 text-center"><div className="flex h-28 w-28 items-center justify-center rounded-full border-[18px] border-rf-primary-light border-l-rf-primary border-b-rf-primary-lighter"><div><p className="text-lg font-bold text-rf-text">{stats?.visibilityScore || 0}%</p><p className="text-[10px] text-rf-muted">Indexed</p></div></div></div></div></Card>

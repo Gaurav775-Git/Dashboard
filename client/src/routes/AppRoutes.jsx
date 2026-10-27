@@ -16,7 +16,7 @@ import Dashboard from '../pages/Dashboard'
 import ComingSoon from '../pages/ComingSoon'
 import Projects from '../pages/Projects'
 import Reports from '../pages/Reports'
-import Performance from '../pages/Performance' // NEW IMPORT
+import Performance from '../pages/Performance'
 import GoogleIndexingOrder from '../pages/GoogleIndexingOrder'
 import GoogleIndexingTracking from '../pages/GoogleIndexingTracking'
 import OrderConfirmation from '../pages/OrderConfirmation'
@@ -26,11 +26,12 @@ import GoogleRankingOrder from '../pages/GoogleRankingOrder'
 import GoogleRankingTracking from '../pages/GoogleRankingTracking'
 import BingRankingOrder from '../pages/BingRankingOrder'
 import BingRankingTracking from '../pages/BingRankingTracking'
+import ChatGptOrder from '../pages/ChatGptOrder'
+import ChatGptTracking from '../pages/ChatGptTracking'
 import GenericServiceOrder from '../pages/GenericServiceOrder'
 import GenericServiceTracking from '../pages/GenericServiceTracking'
 
 const sections = { 
-  // '/performance': 'Performance', <-- REMOVED so it doesn't hit the Coming Soon page
   '/ai-visibility': 'AI Visibility', 
   '/messages': 'Messages', 
   '/billing': 'Billing', 
@@ -59,6 +60,11 @@ const ServiceRoutes = () => (
     <Route path="/services/bing-ranking/order" element={<BingRankingOrder />} />
     <Route path="/services/bing-ranking/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/bing-ranking/:id" element={<BingRankingTracking />} />
+
+    {/* 👇 FIXED: Matched the ID from services.js (chatgpt-citations) */}
+    <Route path="/services/chatgpt-citations/order" element={<ChatGptOrder />} />
+    <Route path="/services/chatgpt-citations/order/confirmation/:orderId" element={<Confirmation />} />
+    <Route path="/projects/chatgpt-citations/:id" element={<ChatGptTracking />} />
     
     <Route path="/services/:serviceId/order" element={<GenericServiceOrder />} />
     <Route path="/services/:serviceId/order/confirmation/:orderId" element={<Confirmation />} />
@@ -95,15 +101,12 @@ const AppRoutes = () => (
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         
-        {/* Main Pages */}
         <Route path="/projects" element={<Projects />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/performance" element={<Performance />} />
         
-        {/* Payment Success Route */}
         <Route path="/payment-success" element={<OrderSuccess />} />
         
-        {/* Coming Soon for remaining routes */}
         {Object.entries(sections).map(([path, section]) => (
           <Route key={path} path={path} element={<ComingSoon section={section} />} />
         ))}
