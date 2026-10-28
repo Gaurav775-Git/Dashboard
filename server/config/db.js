@@ -121,7 +121,68 @@ async function initDb() {
     )
   `);
 
-  // 5. Safely Alter Tables for new columns (FIXED TO INCLUDE CHATGPT)
+  // 5. Gemini Recommendations Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS gemini_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      website VARCHAR(255) NOT NULL,
+      prompts JSON NOT NULL,
+      total_prompts INT NOT NULL,
+      competitors JSON,
+      target_market VARCHAR(100),
+      notes TEXT,
+      trueranker_project_id VARCHAR(100) DEFAULT NULL,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      payment_intent_id VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 6. Knowledge Panel Orders Table (NEW)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS knowledge_panel_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      target_entity VARCHAR(255) NOT NULL,
+      bio_links JSON,
+      notes TEXT,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      payment_intent_id VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 7. Knowledge Panel Reports Table (NEW)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS knowledge_panel_reports (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      kgid_generated BOOLEAN DEFAULT FALSE,
+      kgid_url VARCHAR(255) DEFAULT NULL,
+      bio_links_count INT DEFAULT 0,
+      news_articles_count INT DEFAULT 0,
+      wiki_articles_count INT DEFAULT 0,
+      entity_score INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES knowledge_panel_orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  // 8. Safely Alter Tables for new columns
+  
+  // Alter Indexing Orders
   try {
     await pool.query(`
       ALTER TABLE google_indexing_orders 
@@ -138,7 +199,7 @@ async function initDb() {
     }
   }
 
-  // 👇 FIX: Safely alter chatgpt_orders in case it was created earlier without the TrueRanker ID 👇
+  // Alter ChatGPT Orders
   try {
     await pool.query(`
       ALTER TABLE chatgpt_orders 
@@ -149,6 +210,20 @@ async function initDb() {
   } catch (error) {
     if (error.code !== 'ER_DUP_FIELDNAME') {
       console.error('Error altering chatgpt_orders:', error.message);
+    }
+  }
+
+  // Alter Gemini Orders
+  try {
+    await pool.query(`
+      ALTER TABLE gemini_orders 
+      ADD COLUMN trueranker_project_id VARCHAR(100) DEFAULT NULL,
+      ADD COLUMN payment_intent_id VARCHAR(255) DEFAULT NULL
+    `);
+    console.log('Columns added to gemini_orders');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME') {
+      console.error('Error altering gemini_orders:', error.message);
     }
   }
   

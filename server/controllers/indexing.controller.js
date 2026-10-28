@@ -146,7 +146,7 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// FIXED: Fetch Indexing, Ranking, AND ChatGPT orders
+// 👇 Fetch ALL orders including Knowledge Panel
 const getAllProjects = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -167,6 +167,18 @@ const getAllProjects = async (req, res) => {
     // 3. Fetch ChatGPT Orders
     const [chatgptOrders] = await pool.query(
       "SELECT *, 'chatgpt' as type FROM chatgpt_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // 4. Fetch Gemini Orders
+    const [geminiOrders] = await pool.query(
+      "SELECT *, 'gemini' as type FROM gemini_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // 👇 5. Fetch Knowledge Panel Orders
+    const [kpOrders] = await pool.query(
+      "SELECT *, 'knowledge-panel' as type FROM knowledge_panel_orders WHERE user_id = ?",
       [userId]
     );
 
@@ -194,8 +206,24 @@ const getAllProjects = async (req, res) => {
       projectName: 'ChatGPT Visibility'
     }));
 
+    // Format Gemini
+    const formattedGemini = geminiOrders.map(row => ({
+      ...row,
+      prompts: typeof row.prompts === 'string' ? JSON.parse(row.prompts) : row.prompts,
+      createdAt: row.created_at,
+      projectName: 'Gemini Visibility'
+    }));
+
+    // 👇 Format Knowledge Panel
+    const formattedKP = kpOrders.map(row => ({
+      ...row,
+      bio_links: typeof row.bio_links === 'string' ? JSON.parse(row.bio_links) : row.bio_links,
+      createdAt: row.created_at,
+      projectName: 'Knowledge Panel'
+    }));
+
     // Combine all and sort by newest
-    const allProjects = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt].sort(
+    const allProjects = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini, ...formattedKP].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 

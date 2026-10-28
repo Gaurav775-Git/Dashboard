@@ -28,6 +28,14 @@ import BingRankingOrder from '../pages/BingRankingOrder'
 import BingRankingTracking from '../pages/BingRankingTracking'
 import ChatGptOrder from '../pages/ChatGptOrder'
 import ChatGptTracking from '../pages/ChatGptTracking'
+import GeminiOrder from '../pages/GeminiOrder'
+import GeminiTracking from '../pages/GeminiTracking'
+
+// 👇 Import Knowledge Panel Pages
+import KnowledgePanelTracking from '../pages/KnowledgePanelTracking'
+// Note: If you created a custom KnowledgePanelOrder, import it here. 
+// If not, GenericServiceOrder handles the checkout.
+
 import GenericServiceOrder from '../pages/GenericServiceOrder'
 import GenericServiceTracking from '../pages/GenericServiceTracking'
 
@@ -61,11 +69,20 @@ const ServiceRoutes = () => (
     <Route path="/services/bing-ranking/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/bing-ranking/:id" element={<BingRankingTracking />} />
 
-    {/* 👇 FIXED: Matched the ID from services.js (chatgpt-citations) */}
+    {/* ChatGPT Routes */}
     <Route path="/services/chatgpt-citations/order" element={<ChatGptOrder />} />
     <Route path="/services/chatgpt-citations/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/chatgpt-citations/:id" element={<ChatGptTracking />} />
+
+    {/* Gemini Routes */}
+    <Route path="/services/gemini-recommendations/order" element={<GeminiOrder />} />
+    <Route path="/services/gemini-recommendations/order/confirmation/:orderId" element={<Confirmation />} />
+    <Route path="/projects/gemini-recommendations/:id" element={<GeminiTracking />} />
+
+    {/* 👇 Knowledge Panel Tracking Route */}
+    <Route path="/projects/knowledge-panel/:id" element={<KnowledgePanelTracking />} />
     
+    {/* Generic Fallback Routes (Covers Knowledge Panel Order & others) */}
     <Route path="/services/:serviceId/order" element={<GenericServiceOrder />} />
     <Route path="/services/:serviceId/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/:serviceId/:id" element={<GenericServiceTracking />} />

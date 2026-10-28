@@ -43,6 +43,11 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
           response = await api.post('/services/google-ranking', payload);
         } else if (orderData.orderType === 'chatgpt') {
           response = await api.post('/services/chatgpt-order', payload);
+        } else if (orderData.orderType === 'gemini') { 
+          response = await api.post('/services/gemini-order', payload);
+        } else if (orderData.orderType === 'knowledge-panel') { 
+          // 👇 Route Knowledge Panel
+          response = await api.post('/services/knowledge-panel-order', payload);
         } else {
           response = await api.post('/services/google-indexing', payload);
         }
