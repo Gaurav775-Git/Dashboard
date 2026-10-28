@@ -33,12 +33,19 @@ const {
   submitGeminiToTrueRanker 
 } = require('../controllers/gemini.controller');
 
-// 👇 Knowledge Panel Controller
+// Knowledge Panel Controller
 const { 
   createKnowledgePanelOrder, 
   submitKnowledgePanelReport, 
   getKnowledgePanelReport 
 } = require('../controllers/knowledgePanel.controller');
+
+// 👇 Backlink Controller
+const { 
+  createBacklinkOrder, 
+  submitBacklinkReport, 
+  getBacklinkReport 
+} = require('../controllers/backlink.controller');
 
 
 // ==========================================
@@ -98,7 +105,15 @@ router.post('/admin/knowledge-panel/:orderId/submit-report', submitKnowledgePane
 
 
 // ==========================================
-// Admin All Orders
+// Backlink Routes (NEW)
+// ==========================================
+router.post('/backlink-order', protect, createBacklinkOrder);
+router.get('/backlink-tracking/:orderId', protect, getBacklinkReport);
+router.post('/admin/backlink/:orderId/submit-report', submitBacklinkReport);
+
+
+// ==========================================
+// Admin All Orders (UPDATED with Backlinks)
 // ==========================================
 router.get('/admin/all-orders', async (req, res) => {
   try {
@@ -107,6 +122,8 @@ router.get('/admin/all-orders', async (req, res) => {
     const [chatgpt] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'chatgpt' as type FROM chatgpt_orders o LEFT JOIN users u ON o.user_id = u.id`);
     const [gemini] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'gemini' as type FROM gemini_orders o LEFT JOIN users u ON o.user_id = u.id`);
     const [kp] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'knowledge-panel' as type FROM knowledge_panel_orders o LEFT JOIN users u ON o.user_id = u.id`);
+    // 👇 Backlink Query
+    const [backlinks] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'backlinks' as type FROM backlink_orders o LEFT JOIN users u ON o.user_id = u.id`);
 
     const formattedIndexing = indexing.map(row => ({
       ...row, urls: typeof row.urls === 'string' ? JSON.parse(row.urls) : row.urls,
@@ -139,7 +156,15 @@ router.get('/admin/all-orders', async (req, res) => {
       createdAt: row.created_at, projectName: 'Knowledge Panel'
     }));
 
-    const allOrders = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini, ...formattedKP].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // 👇 Format Backlinks
+    const formattedBacklinks = backlinks.map(row => ({
+      ...row, 
+      userId: { _id: row.user_id, name: row.user_name || 'Guest', email: row.user_email || 'No email' },
+      createdAt: row.created_at, projectName: 'Backlink Report'
+    }));
+
+    // Combine all 6 arrays
+    const allOrders = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini, ...formattedKP, ...formattedBacklinks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({ success: true, count: allOrders.length, data: allOrders });
   } catch (error) {

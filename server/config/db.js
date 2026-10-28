@@ -144,7 +144,7 @@ async function initDb() {
     )
   `);
 
-  // 6. Knowledge Panel Orders Table (NEW)
+  // 6. Knowledge Panel Orders Table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS knowledge_panel_orders (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -163,7 +163,7 @@ async function initDb() {
     )
   `);
 
-  // 7. Knowledge Panel Reports Table (NEW)
+  // 7. Knowledge Panel Reports Table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS knowledge_panel_reports (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -180,7 +180,39 @@ async function initDb() {
     )
   `);
 
-  // 8. Safely Alter Tables for new columns
+  // 👇 8. Backlink Orders Table (NEW)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS backlink_orders (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      order_id VARCHAR(50) NOT NULL UNIQUE,
+      package_id VARCHAR(50) NOT NULL,
+      package_name VARCHAR(50) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      target_url VARCHAR(255) NOT NULL,
+      notes TEXT,
+      status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+      payment_intent_id VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 👇 9. Backlink Items Table (NEW)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS backlink_items (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      order_id VARCHAR(50) NOT NULL,
+      url VARCHAR(255) NOT NULL,
+      domain_rating INT DEFAULT 0,
+      traffic INT DEFAULT 0,
+      anchor_text VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES backlink_orders(order_id) ON DELETE CASCADE
+    )
+  `);
+
+  // 10. Safely Alter Tables for new columns
   
   // Alter Indexing Orders
   try {

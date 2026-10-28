@@ -11,14 +11,12 @@ import StripeCheckoutForm from '../components/StripeCheckoutForm'
 import { getGenericServiceConfig } from '../config/serviceConfigs'
 import { initializePaystack, initializeFlutterwave, initializeCryptomus, createStripeIntent } from '../api/paymentsApi'
 
-// Import logos
 import stripeLogo from '../assets/Stripe-logo.png'
 import paystackLogo from '../assets/Paystack-logo.png'
 import flutterwaveLogo from '../assets/Flluterwave-logo.png'
 import cryptomusLogo from '../assets/Cryptomus-logo.png'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-
 const stages = ['Service', 'Requirements', 'Configuration', 'Review', 'Payment']
 const labels = { website: 'Website or profile URL', target: 'Target page, product, or profile', prompts: 'Prompts to monitor', keywords: 'Keywords to track', channels: 'Channels to include', scope: 'Audit scope', entity: 'Entity or brand name', bio: 'Bio or profile brief', announcement: 'Announcement details', anchor: 'Preferred anchor text', queries: 'Search queries', location: 'Business location', notes: 'Notes for the specialist' }
 
@@ -38,7 +36,6 @@ const GenericServiceOrder = () => {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('Saved just now')
   
-  // Payment States
   const [clientSecret, setClientSecret] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [selectedGateway, setSelectedGateway] = useState('stripe')
@@ -50,13 +47,11 @@ const GenericServiceOrder = () => {
   const update = (field, value) => { setSaved('Saving…'); setDraft((current) => ({ ...current, [field]: value })) }
   const requirements = config.fields.filter((field) => field !== 'notes')
 
-  // Auto-save draft
   useEffect(() => {
     const timer = window.setTimeout(() => { window.localStorage.setItem(key, JSON.stringify(draft)); setSaved('Saved just now') }, 250)
     return () => window.clearTimeout(timer)
   }, [draft, key])
 
-  // Fetch Stripe Intent
   useEffect(() => {
     if (step === 4) {
       createStripeIntent(selected.price, 'usd')
@@ -68,7 +63,18 @@ const GenericServiceOrder = () => {
     }
   }, [step, selected.price])
 
-  // Gateway Handlers
+  // Build the universal order payload
+  const orderData = {
+    packageId: selected.id,
+    packageName: selected.name,
+    totalPrice: selected.price,
+    targetEntity: draft.target || draft.entity, // For Knowledge Panel
+    targetUrl: draft.target || draft.website || draft.url, // For Backlinks & Indexing
+    website: draft.target || draft.website || draft.url,
+    notes: draft.notes,
+    orderType: serviceId // Passes 'backlinks' or 'knowledge-panel' automatically
+  }
+
   const handlePaystackPayment = async () => {
     setIsPaystackLoading(true)
     setPaymentError('')
@@ -77,11 +83,8 @@ const GenericServiceOrder = () => {
       const response = await initializePaystack(selected.price, user?.email || 'guest@example.com', tempOrderId)
       
       if (response.success && response.checkoutUrl) {
-        window.localStorage.setItem('pending_payment_type', serviceId === 'knowledge-panel' ? 'knowledge-panel' : 'generic')
-        window.localStorage.setItem('pending_payment_data', JSON.stringify({
-            packageId: selected.id, packageName: selected.name, totalPrice: selected.price,
-            targetEntity: draft.target || draft.entity, website: draft.target || draft.website, notes: draft.notes
-        }))
+        window.localStorage.setItem('pending_payment_type', serviceId) // 👈 Passes 'backlinks'
+        window.localStorage.setItem('pending_payment_data', JSON.stringify(orderData))
         window.location.href = response.checkoutUrl
       }
     } catch (err) {
@@ -98,11 +101,8 @@ const GenericServiceOrder = () => {
       const response = await initializeFlutterwave(selected.price, user?.email || 'guest@example.com', tempOrderId)
       
       if (response.success && response.checkoutUrl) {
-        window.localStorage.setItem('pending_payment_type', serviceId === 'knowledge-panel' ? 'knowledge-panel' : 'generic')
-        window.localStorage.setItem('pending_payment_data', JSON.stringify({
-            packageId: selected.id, packageName: selected.name, totalPrice: selected.price,
-            targetEntity: draft.target || draft.entity, website: draft.target || draft.website, notes: draft.notes
-        }))
+        window.localStorage.setItem('pending_payment_type', serviceId)
+        window.localStorage.setItem('pending_payment_data', JSON.stringify(orderData))
         window.location.href = response.checkoutUrl
       }
     } catch (err) {
@@ -119,11 +119,8 @@ const GenericServiceOrder = () => {
       const response = await initializeCryptomus(selected.price, user?.email || 'guest@example.com', tempOrderId)
       
       if (response.success && response.checkoutUrl) {
-        window.localStorage.setItem('pending_payment_type', serviceId === 'knowledge-panel' ? 'knowledge-panel' : 'generic')
-        window.localStorage.setItem('pending_payment_data', JSON.stringify({
-            packageId: selected.id, packageName: selected.name, totalPrice: selected.price,
-            targetEntity: draft.target || draft.entity, website: draft.target || draft.website, notes: draft.notes
-        }))
+        window.localStorage.setItem('pending_payment_type', serviceId)
+        window.localStorage.setItem('pending_payment_data', JSON.stringify(orderData))
         window.location.href = response.checkoutUrl
       }
     } catch (err) {
@@ -140,16 +137,6 @@ const GenericServiceOrder = () => {
   }
 
   if (!config) return null
-
-  const orderData = {
-    packageId: selected.id,
-    packageName: selected.name,
-    totalPrice: selected.price,
-    targetEntity: draft.target || draft.entity,
-    website: draft.target || draft.website,
-    notes: draft.notes,
-    orderType: serviceId === 'knowledge-panel' ? 'knowledge-panel' : 'generic'
-  }
 
   return (
     <div className="min-h-screen bg-rf-bg">
@@ -266,7 +253,6 @@ const GenericServiceOrder = () => {
                 <p className="text-sm font-medium text-rf-text mb-3">Select Payment Method</p>
                 
                 <div className="grid gap-3">
-                  
                   {/* Stripe Card */}
                   <div onClick={() => setSelectedGateway('stripe')} className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 flex items-center justify-between ${selectedGateway === 'stripe' ? 'border-rf-primary bg-rf-primary/5 ring-1 ring-rf-primary' : 'border-rf-border bg-rf-bg hover:border-rf-muted'}`}>
                     <div className="flex items-center gap-3">
@@ -332,9 +318,7 @@ const GenericServiceOrder = () => {
                   </div>
                 </div>
 
-                {/* Dynamic Payment Action Area */}
                 <div className="mt-8 pt-6 border-t border-rf-border">
-                  
                   {selectedGateway === 'stripe' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                       {clientSecret ? (

@@ -5,7 +5,7 @@ import Button from '../components/ui/Button'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { verifyPaystack, verifyFlutterwave } from '../api/paymentsApi'
-import { api } from '../lib/api' // Using the generic api instance
+import { api } from '../lib/api'
 
 const OrderSuccess = () => {
   const navigate = useNavigate()
@@ -36,22 +36,21 @@ const OrderSuccess = () => {
 
         // Route the API call based on the pending payment type
         if (pendingType === 'chatgpt-order') {
-          response = await api.post('/services/chatgpt-order', {
-            ...orderData,
-            paymentIntentId: paymentReference
-          })
+          response = await api.post('/services/chatgpt-order', { ...orderData, paymentIntentId: paymentReference })
           window.localStorage.removeItem('rankfasta-chatgpt-order-draft')
+        } else if (pendingType === 'gemini-order') {
+          response = await api.post('/services/gemini-order', { ...orderData, paymentIntentId: paymentReference })
+          window.localStorage.removeItem('rankfasta-gemini-order-draft')
+        } else if (pendingType === 'knowledge-panel') {
+          response = await api.post('/services/knowledge-panel-order', { ...orderData, paymentIntentId: paymentReference })
+        } else if (pendingType === 'backlinks') { 
+          // 👇 Route Backlink Redirect Payments
+          response = await api.post('/services/backlink-order', { ...orderData, paymentIntentId: paymentReference })
         } else if (pendingType === 'google-indexing') {
-          response = await api.post('/services/google-indexing', {
-            ...orderData,
-            paymentIntentId: paymentReference
-          })
+          response = await api.post('/services/google-indexing', { ...orderData, paymentIntentId: paymentReference })
           window.localStorage.removeItem('rankfasta-google-indexing-draft')
         } else if (pendingType === 'ranking') {
-          response = await api.post('/services/google-ranking', {
-            ...orderData,
-            paymentIntentId: paymentReference
-          })
+          response = await api.post('/services/google-ranking', { ...orderData, paymentIntentId: paymentReference })
         } else {
           throw new Error('Unknown payment type')
         }
@@ -68,8 +67,14 @@ const OrderSuccess = () => {
         setTimeout(() => {
           if (pendingType === 'chatgpt-order') {
             navigate(`/services/chatgpt-citations/order/confirmation/${newOrderId}`)
+          } else if (pendingType === 'gemini-order') {
+            navigate(`/services/gemini-recommendations/order/confirmation/${newOrderId}`)
           } else if (pendingType === 'google-indexing') {
             navigate(`/services/google-indexing/order/confirmation/${newOrderId}`)
+          } else if (pendingType === 'backlinks') {
+            navigate(`/services/backlinks/order/confirmation/${newOrderId}`)
+          } else if (pendingType === 'knowledge-panel') {
+            navigate(`/services/knowledge-panel/order/confirmation/${newOrderId}`)
           } else {
             navigate('/projects') // Fallback
           }
@@ -83,47 +88,26 @@ const OrderSuccess = () => {
       }
     }
 
-    // 1. Check for Paystack
     if (paystackReference) {
       verifyPaystack(paystackReference)
         .then(async (res) => {
-          if (res.success) {
-            await processOrder(paystackReference)
-          } else {
-            setError("Paystack payment verification failed. Please contact support.")
-            setVerifying(false)
-          }
+          if (res.success) await processOrder(paystackReference)
+          else { setError("Paystack payment verification failed."); setVerifying(false) }
         })
-        .catch(err => {
-          setError("Could not verify Paystack payment.")
-          setVerifying(false)
-        })
+        .catch(err => { setError("Could not verify Paystack payment."); setVerifying(false) })
     } 
-    // 2. Check for Flutterwave
     else if (flwTransactionId && flwStatus === 'successful') {
       verifyFlutterwave(flwTransactionId)
         .then(async (res) => {
-          if (res.success) {
-            await processOrder(flwTransactionId)
-          } else {
-            setError("Flutterwave payment verification failed. Please contact support.")
-            setVerifying(false)
-          }
+          if (res.success) await processOrder(flwTransactionId)
+          else { setError("Flutterwave payment verification failed."); setVerifying(false) }
         })
-        .catch(err => {
-          setError("Could not verify Flutterwave payment.")
-          setVerifying(false)
-        })
+        .catch(err => { setError("Could not verify Flutterwave payment."); setVerifying(false) })
     } 
-    // 3. Stripe Redirect Fallback (if redirect was forced)
     else {
-      // If there are no params, they might have landed here directly or via Stripe redirect
       const pendingType = window.localStorage.getItem('pending_payment_type')
-      if (pendingType) {
-        processOrder('stripe_redirect')
-      } else {
-        setVerifying(false)
-      }
+      if (pendingType) processOrder('stripe_redirect')
+      else setVerifying(false)
     }
   }, [searchParams, navigate])
 
@@ -141,7 +125,6 @@ const OrderSuccess = () => {
                  </svg>
                </div>
                <h1 className="mt-6 text-3xl font-bold text-rf-text">Verifying Payment...</h1>
-               <p className="mt-4 text-rf-muted">Please wait while we confirm your transaction and create your order.</p>
              </div>
           ) : (
             <>
@@ -158,22 +141,11 @@ const OrderSuccess = () => {
                   </svg>
                 </div>
               )}
-
-              <h1 className="mt-6 text-3xl font-bold text-rf-text">
-                {error ? 'Order Processing Failed' : (successMessage || 'Payment Successful!')}
-              </h1>
-              
-              <p className="mt-4 text-rf-muted">
-                {error ? error : 'Your campaign has been created and is now active.'}
-              </p>
-
+              <h1 className="mt-6 text-3xl font-bold text-rf-text">{error ? 'Order Processing Failed' : (successMessage || 'Payment Successful!')}</h1>
+              <p className="mt-4 text-rf-muted">{error ? error : 'Your campaign has been created and is now active.'}</p>
               <div className="mt-8 flex justify-center gap-4">
-                <Button onClick={() => navigate('/projects')} variant="primary">
-                  Go to My Projects
-                </Button>
-                <Button onClick={() => navigate('/')} variant="secondary">
-                  Back to Overview
-                </Button>
+                <Button onClick={() => navigate('/projects')} variant="primary">Go to My Projects</Button>
+                <Button onClick={() => navigate('/')} variant="secondary">Back to Overview</Button>
               </div>
             </>
           )}

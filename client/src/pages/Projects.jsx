@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAllProjects } from '../api/indexingApi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import { FiArrowLeft, FiExternalLink } from 'react-icons/fi'
+import { FiArrowLeft } from 'react-icons/fi'
 
 const Projects = () => {
   const [orders, setOrders] = useState([])
@@ -14,7 +14,6 @@ const Projects = () => {
     const fetchUserOrders = async () => {
       try {
         const response = await getAllProjects()
-        // Handle both { data: [...] } and direct array
         const actualData = response.data || response
         setOrders(Array.isArray(actualData) ? actualData : [])
       } catch (error) {
@@ -26,9 +25,7 @@ const Projects = () => {
     fetchUserOrders()
   }, [])
 
-  // Unified routing logic based on order type
   const handleViewDetails = (order) => {
-    // Use order.order_id (from DB) fallback to order.orderId
     const id = order.order_id || order.orderId
 
     if (order.type === 'chatgpt') {
@@ -36,8 +33,10 @@ const Projects = () => {
     } else if (order.type === 'gemini') {
       navigate(`/projects/gemini-recommendations/${id}`)
     } else if (order.type === 'knowledge-panel') {
-      // 👇 Routes to the Knowledge Panel Tracking page
       navigate(`/projects/knowledge-panel/${id}`)
+    } else if (order.type === 'backlinks') {
+      // 👇 Added Backlink Route
+      navigate(`/projects/backlinks/${id}`)
     } else if (order.type === 'ranking') {
       navigate(`/projects/google-ranking/${id}`)
     } else {
@@ -49,15 +48,9 @@ const Projects = () => {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
-      
-      {/* Back Button */}
       <div className="mb-6">
-        <button 
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-sm font-medium text-rf-muted hover:text-rf-text transition-colors w-fit"
-        >
-          <FiArrowLeft />
-          Back to Dashboard
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-sm font-medium text-rf-muted hover:text-rf-text transition-colors w-fit">
+          <FiArrowLeft /> Back to Dashboard
         </button>
       </div>
 
@@ -66,9 +59,7 @@ const Projects = () => {
           <h1 className="text-3xl font-bold text-rf-text">My Projects</h1>
           <p className="text-rf-muted mt-2">Manage your active campaigns and view payment history.</p>
         </div>
-        <Button onClick={() => navigate('/services')}>
-          + New Campaign
-        </Button>
+        <Button onClick={() => navigate('/services')}>+ New Campaign</Button>
       </div>
 
       {orders.length === 0 ? (
@@ -95,15 +86,15 @@ const Projects = () => {
                 </div>
                 
                 <h3 className="text-lg font-semibold text-rf-text truncate max-w-lg">
-                  {order.type === 'knowledge-panel' ? order.target_entity : order.website}
+                  {order.type === 'knowledge-panel' ? order.target_entity : (order.target_url || order.website)}
                 </h3>
                 
-                {/* Conditional Stats Display */}
                 <p className="text-sm text-rf-muted mt-1">
                   {order.type === 'indexing' && `${order.total_urls || 0} URLs submitted · ${order.package_name}`}
                   {order.type === 'ranking' && `${order.total_keywords || 0} Keywords tracked · ${order.package_name}`}
                   {(order.type === 'chatgpt' || order.type === 'gemini') && `${order.total_prompts || 0} Prompts monitored · ${order.package_name}`}
                   {order.type === 'knowledge-panel' && `Entity: ${order.target_entity || 'N/A'} · ${order.package_name}`}
+                  {order.type === 'backlinks' && `Target: ${order.target_url || 'N/A'} · ${order.package_name}`}
                 </p>
               </div>
 
@@ -118,15 +109,8 @@ const Projects = () => {
                   )}
                 </div>
                 
-                {/* 
-                  If it's a knowledge panel, the button says "View Report" 
-                  and goes to the tracking page which handles the "Not Ready" fallback.
-                */}
-                <Button 
-                  variant="secondary" 
-                  onClick={() => handleViewDetails(order)}
-                >
-                  {order.type === 'knowledge-panel' ? 'View Report' : 'View Details'}
+                <Button variant="secondary" onClick={() => handleViewDetails(order)}>
+                  {['knowledge-panel', 'backlinks'].includes(order.type) ? 'View Report' : 'View Details'}
                 </Button>
               </div>
             </Card>
