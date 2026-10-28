@@ -30,6 +30,9 @@ const Projects = () => {
   const handleViewDetails = (order) => {
     if (order.type === 'chatgpt') {
       navigate(`/projects/chatgpt-citations/${order.orderId}`)
+    } else if (order.type === 'gemini') {
+      // 👇 Added Gemini Route
+      navigate(`/projects/gemini-recommendations/${order.orderId}`)
     } else if (order.type === 'ranking') {
       navigate(`/projects/google-ranking/${order.orderId}`)
     } else {
@@ -92,7 +95,7 @@ const Projects = () => {
                 <p className="text-sm text-rf-muted mt-1">
                   {order.type === 'indexing' && `${order.totalUrls || 0} URLs submitted · ${order.packageName}`}
                   {order.type === 'ranking' && `${order.totalKeywords || 0} Keywords tracked · ${order.packageName}`}
-                  {order.type === 'chatgpt' && `${order.totalPrompts || 0} Prompts monitored · ${order.packageName}`}
+                  {(order.type === 'chatgpt' || order.type === 'gemini') && `${order.totalPrompts || 0} Prompts monitored · ${order.packageName}`}
                 </p>
               </div>
 

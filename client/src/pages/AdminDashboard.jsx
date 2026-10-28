@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { getAdminAllOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
 import { submitChatGptToTrueRanker } from '../api/chatgptApi'
+import { submitGeminiToTrueRanker } from '../api/geminiApi' // 👈 Import Gemini API
 import { api } from '../lib/api'
 
 const statusColors = {
@@ -52,12 +53,13 @@ const AdminDashboard = () => {
       if (selectedOrder.type === 'chatgpt') {
         if (!trProjectId.trim()) throw new Error('TrueRanker Project ID is required')
         await submitChatGptToTrueRanker(selectedOrder.orderId, trProjectId)
+      } else if (selectedOrder.type === 'gemini') {
+        if (!trProjectId.trim()) throw new Error('TrueRanker Project ID is required')
+        await submitGeminiToTrueRanker(selectedOrder.orderId, trProjectId)
       } else if (selectedOrder.type === 'indexing') {
-        // Call the existing indexing API
         const engine = selectedOrder.engine || 'google';
         await updateGoogleIndexingStatus(selectedOrder.id, 'processing', engine)
       } else if (selectedOrder.type === 'ranking') {
-        // Call a generic ranking API (you can replace this endpoint with your actual ranking trigger)
         await api.post('/services/admin/orders/trigger-api', { 
           orderId: selectedOrder.orderId, 
           type: 'ranking' 
@@ -196,11 +198,11 @@ const AdminDashboard = () => {
                         <div className="max-w-xs truncate text-slate-300">
                           {order.type === 'indexing' 
                             ? (order.urls?.[0] || 'No URLs')
-                            : order.type === 'chatgpt'
+                            : (order.type === 'chatgpt' || order.type === 'gemini')
                             ? (order.website || 'No Website')
                             : (order.keywords?.[0] || 'No Keywords')}
                         </div>
-                        {order.type === 'chatgpt' && (
+                        {(order.type === 'chatgpt' || order.type === 'gemini') && (
                           <div className="mt-1 text-xs text-emerald-400">
                             {order.prompts?.length || 0} Prompts
                           </div>
@@ -268,14 +270,14 @@ const AdminDashboard = () => {
                 <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div>
                     <span className="mb-1 block text-xs text-slate-400">
-                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' ? 'Tracked Prompts' : 'Target Keywords'}
+                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini' ? 'Tracked Prompts' : 'Target Keywords'}
                     </span>
                     <div className="space-y-1">
                       {selectedOrder.type === 'indexing' 
                         ? selectedOrder.urls?.map((url, i) => (
                             <a key={i} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-400 hover:underline">{url}</a>
                           ))
-                        : selectedOrder.type === 'chatgpt'
+                        : (selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini')
                         ? selectedOrder.prompts?.map((prompt, i) => (
                             <div key={i} className="block truncate text-indigo-400">"{prompt}"</div>
                           ))
@@ -301,14 +303,14 @@ const AdminDashboard = () => {
                 {selectedOrder.status === 'processing' || selectedOrder.status === 'completed' ? (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
                     <p className="text-emerald-400 font-medium">This order is already {selectedOrder.status}.</p>
-                    {selectedOrder.type === 'chatgpt' && selectedOrder.trueranker_project_id && (
+                    {(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') && selectedOrder.trueranker_project_id && (
                       <p className="text-xs text-slate-300 mt-1">Project ID: <span className="font-mono">{selectedOrder.trueranker_project_id}</span></p>
                     )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                     
-                    {selectedOrder.type === 'chatgpt' && (
+                    {(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') && (
                       <div className="mb-3">
                         <label className="block text-xs text-slate-400 mb-2">TrueRanker Project ID:</label>
                         <input 
@@ -338,7 +340,7 @@ const AdminDashboard = () => {
                     >
                       {isSubmitting 
                         ? 'Submitting...' 
-                        : `Submit to ${selectedOrder.type === 'chatgpt' ? 'TrueRanker' : selectedOrder.type === 'indexing' ? 'Indexer' : 'Ranking API'}`}
+                        : `Submit to ${(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') ? 'TrueRanker' : selectedOrder.type === 'indexing' ? 'Indexer' : 'Ranking API'}`}
                     </button>
                   </div>
                 )}

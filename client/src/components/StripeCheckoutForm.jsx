@@ -43,6 +43,9 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
           response = await api.post('/services/google-ranking', payload);
         } else if (orderData.orderType === 'chatgpt') {
           response = await api.post('/services/chatgpt-order', payload);
+        } else if (orderData.orderType === 'gemini') { 
+          // 👇 NEW: Route Gemini
+          response = await api.post('/services/gemini-order', payload);
         } else {
           response = await api.post('/services/google-indexing', payload);
         }

@@ -146,7 +146,7 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// FIXED: Fetch Indexing, Ranking, AND ChatGPT orders
+// Fetch Indexing, Ranking, ChatGPT, AND Gemini orders for the user
 const getAllProjects = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -167,6 +167,12 @@ const getAllProjects = async (req, res) => {
     // 3. Fetch ChatGPT Orders
     const [chatgptOrders] = await pool.query(
       "SELECT *, 'chatgpt' as type FROM chatgpt_orders WHERE user_id = ?",
+      [userId]
+    );
+
+    // 👇 4. Fetch Gemini Orders
+    const [geminiOrders] = await pool.query(
+      "SELECT *, 'gemini' as type FROM gemini_orders WHERE user_id = ?",
       [userId]
     );
 
@@ -194,8 +200,16 @@ const getAllProjects = async (req, res) => {
       projectName: 'ChatGPT Visibility'
     }));
 
+    // 👇 Format Gemini
+    const formattedGemini = geminiOrders.map(row => ({
+      ...row,
+      prompts: typeof row.prompts === 'string' ? JSON.parse(row.prompts) : row.prompts,
+      createdAt: row.created_at,
+      projectName: 'Gemini Visibility'
+    }));
+
     // Combine all and sort by newest
-    const allProjects = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt].sort(
+    const allProjects = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 
