@@ -39,6 +39,7 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
         const payload = { ...orderData, paymentIntentId: paymentIntent.id };
         let response;
         
+        // Route to the correct backend endpoint based on orderType
         if (orderData.orderType === 'ranking') {
           response = await api.post('/services/google-ranking', payload);
         } else if (orderData.orderType === 'chatgpt') {
@@ -46,8 +47,10 @@ const StripeCheckoutForm = ({ orderData, onSuccess, onError }) => {
         } else if (orderData.orderType === 'gemini') { 
           response = await api.post('/services/gemini-order', payload);
         } else if (orderData.orderType === 'knowledge-panel') { 
-          // 👇 Route Knowledge Panel
           response = await api.post('/services/knowledge-panel-order', payload);
+        } else if (orderData.orderType === 'backlinks') { 
+          // 👇 Route Backlink Payments
+          response = await api.post('/services/backlink-order', payload);
         } else {
           response = await api.post('/services/google-indexing', payload);
         }

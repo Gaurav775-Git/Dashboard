@@ -30,11 +30,8 @@ import ChatGptOrder from '../pages/ChatGptOrder'
 import ChatGptTracking from '../pages/ChatGptTracking'
 import GeminiOrder from '../pages/GeminiOrder'
 import GeminiTracking from '../pages/GeminiTracking'
-
-// 👇 Import Knowledge Panel Pages
 import KnowledgePanelTracking from '../pages/KnowledgePanelTracking'
-// Note: If you created a custom KnowledgePanelOrder, import it here. 
-// If not, GenericServiceOrder handles the checkout.
+import BacklinkTracking from '../pages/BacklinkTracking' // 👈 Import Backlink Tracking
 
 import GenericServiceOrder from '../pages/GenericServiceOrder'
 import GenericServiceTracking from '../pages/GenericServiceTracking'
@@ -79,10 +76,13 @@ const ServiceRoutes = () => (
     <Route path="/services/gemini-recommendations/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/gemini-recommendations/:id" element={<GeminiTracking />} />
 
-    {/* 👇 Knowledge Panel Tracking Route */}
+    {/* Knowledge Panel Routes */}
     <Route path="/projects/knowledge-panel/:id" element={<KnowledgePanelTracking />} />
+
+    {/* 👇 Backlink Routes */}
+    <Route path="/projects/backlinks/:id" element={<BacklinkTracking />} />
     
-    {/* Generic Fallback Routes (Covers Knowledge Panel Order & others) */}
+    {/* Generic Fallback Routes */}
     <Route path="/services/:serviceId/order" element={<GenericServiceOrder />} />
     <Route path="/services/:serviceId/order/confirmation/:orderId" element={<Confirmation />} />
     <Route path="/projects/:serviceId/:id" element={<GenericServiceTracking />} />
@@ -91,7 +91,6 @@ const ServiceRoutes = () => (
 
 const AppRoutes = () => (
   <Routes>
-    {/* Public Auth Routes */}
     <Route element={<AuthLayout />}>
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<Login />} />
@@ -102,7 +101,6 @@ const AppRoutes = () => (
       <Route path="/verify-email" element={<VerifyEmail />} />
     </Route>
 
-    {/* Admin Route */}
     <Route 
       path="/admin" 
       element={
@@ -112,7 +110,6 @@ const AppRoutes = () => (
       } 
     />
 
-    {/* Client Dashboard Routes */}
     <Route element={<ProtectedRoute />}>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />

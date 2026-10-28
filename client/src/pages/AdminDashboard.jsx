@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { getAdminAllOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
 import { submitChatGptToTrueRanker } from '../api/chatgptApi'
 import { submitGeminiToTrueRanker } from '../api/geminiApi'
-import { submitKnowledgePanelReport } from '../api/knowledgePanelApi' // 👈 New Import
+import { submitKnowledgePanelReport } from '../api/knowledgePanelApi' 
+import { submitBacklinkReport } from '../api/backlinkApi' // 👈 Import Backlink API
 import { api } from '../lib/api'
 
 const statusColors = {
@@ -30,7 +31,6 @@ const AdminDashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   
-  // 👇 Knowledge Panel State
   const [kpData, setKpData] = useState({
     kgid_generated: false,
     kgid_url: '',
@@ -38,6 +38,19 @@ const AdminDashboard = () => {
     news_articles_count: 0,
     wiki_articles_count: 0
   })
+
+  // 👇 Backlink State
+  const [blLinks, setBlLinks] = useState([{ url: '', domain_rating: 0, traffic: 0, anchor_text: '' }]);
+
+  const handleAddBlRow = () => {
+    setBlLinks([...blLinks, { url: '', domain_rating: 0, traffic: 0, anchor_text: '' }]);
+  };
+
+  const handleBlChange = (index, field, value) => {
+    const newLinks = [...blLinks];
+    newLinks[index][field] = value;
+    setBlLinks(newLinks);
+  };
 
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
@@ -67,8 +80,10 @@ const AdminDashboard = () => {
         if (!trProjectId.trim()) throw new Error('TrueRanker Project ID is required')
         await submitGeminiToTrueRanker(selectedOrder.orderId, trProjectId)
       } else if (selectedOrder.type === 'knowledge-panel') {
-        // 👇 Submit Knowledge Panel Data
         await submitKnowledgePanelReport(selectedOrder.orderId, kpData)
+      } else if (selectedOrder.type === 'backlinks') { 
+        // 👇 Submit Backlink Data
+        await submitBacklinkReport(selectedOrder.orderId, { links: blLinks });
       } else if (selectedOrder.type === 'indexing') {
         const engine = selectedOrder.engine || 'google';
         await updateGoogleIndexingStatus(selectedOrder.id, 'processing', engine)
@@ -79,7 +94,6 @@ const AdminDashboard = () => {
         })
       }
       
-      // Update local state instantly
       setOrders(orders.map(o => 
         o.orderId === selectedOrder.orderId ? { ...o, status: 'processing' } : o
       ))
@@ -215,27 +229,25 @@ const AdminDashboard = () => {
                             ? (order.website || 'No Website')
                             : order.type === 'knowledge-panel'
                             ? (order.target_entity || 'No Entity')
+                            : order.type === 'backlinks'
+                            ? (order.target_url || 'No Target URL')
                             : (order.keywords?.[0] || 'No Keywords')}
                         </div>
+                        
                         {(order.type === 'chatgpt' || order.type === 'gemini') && (
-                          <div className="mt-1 text-xs text-emerald-400">
-                            {order.prompts?.length || 0} Prompts
-                          </div>
+                          <div className="mt-1 text-xs text-emerald-400">{order.prompts?.length || 0} Prompts</div>
                         )}
                         {order.type === 'knowledge-panel' && (
-                          <div className="mt-1 text-xs text-blue-400">
-                            Knowledge Panel Entity
-                          </div>
+                          <div className="mt-1 text-xs text-blue-400">Knowledge Panel Entity</div>
+                        )}
+                        {order.type === 'backlinks' && (
+                          <div className="mt-1 text-xs text-indigo-400">Backlink Target</div>
                         )}
                         {order.type === 'indexing' && (
-                          <div className="mt-1 text-xs text-indigo-400">
-                            +{(order.urls?.length || 1) - 1} more URLs
-                          </div>
+                          <div className="mt-1 text-xs text-indigo-400">+{(order.urls?.length || 1) - 1} more URLs</div>
                         )}
                         {order.type === 'ranking' && (
-                          <div className="mt-1 text-xs text-indigo-400">
-                            +{(order.keywords?.length || 1) - 1} more Keywords
-                          </div>
+                          <div className="mt-1 text-xs text-indigo-400">+{(order.keywords?.length || 1) - 1} more Keywords</div>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -279,7 +291,6 @@ const AdminDashboard = () => {
                   <div className="flex justify-between py-1"><span className="text-slate-400">Order ID</span><span className="font-mono text-xs text-slate-200">{selectedOrder.orderId}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Type</span><span className="font-semibold text-indigo-400">{selectedOrder.projectName}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Status</span><StatusBadge status={selectedOrder.status} /></div>
-                  <div className="flex justify-between py-1"><span className="text-slate-400">Date</span><span className="text-slate-200">{new Date(selectedOrder.createdAt).toLocaleString()}</span></div>
                   <div className="flex justify-between py-1"><span className="text-slate-400">Client</span><span className="text-slate-200">{selectedOrder.userId?.email || '—'}</span></div>
                 </div>
               </div>
@@ -290,7 +301,7 @@ const AdminDashboard = () => {
                 <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div>
                     <span className="mb-1 block text-xs text-slate-400">
-                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini' ? 'Tracked Prompts' : selectedOrder.type === 'knowledge-panel' ? 'Target Entity' : 'Target Keywords'}
+                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini' ? 'Tracked Prompts' : selectedOrder.type === 'knowledge-panel' ? 'Target Entity' : selectedOrder.type === 'backlinks' ? 'Target URL' : 'Target Keywords'}
                     </span>
                     <div className="space-y-1">
                       {selectedOrder.type === 'indexing' 
@@ -303,15 +314,13 @@ const AdminDashboard = () => {
                           ))
                         : selectedOrder.type === 'knowledge-panel'
                         ? <div className="text-slate-200">{selectedOrder.target_entity}</div>
+                        : selectedOrder.type === 'backlinks'
+                        ? <div className="text-slate-200 truncate">{selectedOrder.target_url}</div>
                         : selectedOrder.keywords?.map((kw, i) => (
                             <div key={i} className="block truncate text-indigo-400">{kw}</div>
                           ))
                       }
                     </div>
-                  </div>
-                  <div className="pt-2">
-                    <span className="mb-1 block text-xs text-slate-400">Website / Target</span>
-                    <span className="text-slate-200">{selectedOrder.website || selectedOrder.target_entity || '—'}</span>
                   </div>
                 </div>
               </div>
@@ -325,9 +334,6 @@ const AdminDashboard = () => {
                 {selectedOrder.status === 'processing' || selectedOrder.status === 'completed' ? (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
                     <p className="text-emerald-400 font-medium">This order is already {selectedOrder.status}.</p>
-                    {(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') && selectedOrder.trueranker_project_id && (
-                      <p className="text-xs text-slate-300 mt-1">Project ID: <span className="font-mono">{selectedOrder.trueranker_project_id}</span></p>
-                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
@@ -335,13 +341,7 @@ const AdminDashboard = () => {
                     {(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') && (
                       <div className="mb-3">
                         <label className="block text-xs text-slate-400 mb-2">TrueRanker Project ID:</label>
-                        <input 
-                          type="text" 
-                          value={trProjectId}
-                          onChange={(e) => setTrProjectId(e.target.value)}
-                          placeholder="e.g. 12345"
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
-                        />
+                        <input type="text" value={trProjectId} onChange={(e) => setTrProjectId(e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
                       </div>
                     )}
 
@@ -366,9 +366,25 @@ const AdminDashboard = () => {
                         {kpData.kgid_generated && (
                           <div>
                             <label className="block text-xs text-slate-400 mb-1">KGID URL</label>
-                            <input type="text" value={kpData.kgid_url} onChange={(e) => setKpData({...kpData, kgid_url: e.target.value})} placeholder="https://google.com/search?q=..." className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
+                            <input type="text" value={kpData.kgid_url} onChange={(e) => setKpData({...kpData, kgid_url: e.target.value})} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* 👇 Backlink Dynamic Form */}
+                    {selectedOrder.type === 'backlinks' && (
+                      <div className="space-y-4 mb-4">
+                        <label className="block text-xs text-slate-400">Backlinks List</label>
+                        {blLinks.map((link, index) => (
+                          <div key={index} className="grid grid-cols-2 gap-2 border p-2 rounded bg-slate-900">
+                            <input type="text" placeholder="URL" value={link.url} onChange={(e) => handleBlChange(index, 'url', e.target.value)} className="col-span-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white text-xs" />
+                            <input type="number" placeholder="DR" value={link.domain_rating} onChange={(e) => handleBlChange(index, 'domain_rating', Number(e.target.value))} className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white text-xs" />
+                            <input type="number" placeholder="Traffic" value={link.traffic} onChange={(e) => handleBlChange(index, 'traffic', Number(e.target.value))} className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white text-xs" />
+                            <input type="text" placeholder="Anchor Text" value={link.anchor_text} onChange={(e) => handleBlChange(index, 'anchor_text', e.target.value)} className="col-span-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white text-xs" />
+                          </div>
+                        ))}
+                        <button type="button" onClick={handleAddBlRow} className="text-xs text-emerald-400 hover:underline">+ Add Another Link</button>
                       </div>
                     )}
 
@@ -385,14 +401,13 @@ const AdminDashboard = () => {
                     <button
                       onClick={handleManualSubmit}
                       disabled={isSubmitting}
-                      className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                      className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 mt-4"
                     >
                       {isSubmitting ? 'Submitting...' : `Save Data & Calculate Score`}
                     </button>
                   </div>
                 )}
               </div>
-
             </div>
 
             <button
