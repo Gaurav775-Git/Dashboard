@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAllProjects } from '../api/indexingApi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import { FiArrowLeft } from 'react-icons/fi'
+import { FiArrowLeft, FiExternalLink } from 'react-icons/fi'
 
 const Projects = () => {
   const [orders, setOrders] = useState([])
@@ -28,15 +28,20 @@ const Projects = () => {
 
   // Unified routing logic based on order type
   const handleViewDetails = (order) => {
+    // Use order.order_id (from DB) fallback to order.orderId
+    const id = order.order_id || order.orderId
+
     if (order.type === 'chatgpt') {
-      navigate(`/projects/chatgpt-citations/${order.orderId}`)
+      navigate(`/projects/chatgpt-citations/${id}`)
     } else if (order.type === 'gemini') {
-      // 👇 Added Gemini Route
-      navigate(`/projects/gemini-recommendations/${order.orderId}`)
+      navigate(`/projects/gemini-recommendations/${id}`)
+    } else if (order.type === 'knowledge-panel') {
+      // 👇 Routes to the Knowledge Panel Tracking page
+      navigate(`/projects/knowledge-panel/${id}`)
     } else if (order.type === 'ranking') {
-      navigate(`/projects/google-ranking/${order.orderId}`)
+      navigate(`/projects/google-ranking/${id}`)
     } else {
-      navigate(`/projects/google-indexing/${order.orderId}`)
+      navigate(`/projects/google-indexing/${id}`)
     }
   }
 
@@ -76,7 +81,7 @@ const Projects = () => {
             <Card key={`${order.type}-${order.id}`} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <span className="font-mono text-sm text-rf-blue-light">{order.orderId}</span>
+                  <span className="font-mono text-sm text-rf-blue-light">{order.order_id || order.orderId}</span>
                   <span className={`text-xs px-2 py-1 rounded-full capitalize ${
                     order.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
                     order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
@@ -89,13 +94,16 @@ const Projects = () => {
                   </span>
                 </div>
                 
-                <h3 className="text-lg font-semibold text-rf-text truncate max-w-lg">{order.website}</h3>
+                <h3 className="text-lg font-semibold text-rf-text truncate max-w-lg">
+                  {order.type === 'knowledge-panel' ? order.target_entity : order.website}
+                </h3>
                 
                 {/* Conditional Stats Display */}
                 <p className="text-sm text-rf-muted mt-1">
-                  {order.type === 'indexing' && `${order.totalUrls || 0} URLs submitted · ${order.packageName}`}
-                  {order.type === 'ranking' && `${order.totalKeywords || 0} Keywords tracked · ${order.packageName}`}
-                  {(order.type === 'chatgpt' || order.type === 'gemini') && `${order.totalPrompts || 0} Prompts monitored · ${order.packageName}`}
+                  {order.type === 'indexing' && `${order.total_urls || 0} URLs submitted · ${order.package_name}`}
+                  {order.type === 'ranking' && `${order.total_keywords || 0} Keywords tracked · ${order.package_name}`}
+                  {(order.type === 'chatgpt' || order.type === 'gemini') && `${order.total_prompts || 0} Prompts monitored · ${order.package_name}`}
+                  {order.type === 'knowledge-panel' && `Entity: ${order.target_entity || 'N/A'} · ${order.package_name}`}
                 </p>
               </div>
 
@@ -109,11 +117,16 @@ const Projects = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* 
+                  If it's a knowledge panel, the button says "View Report" 
+                  and goes to the tracking page which handles the "Not Ready" fallback.
+                */}
                 <Button 
                   variant="secondary" 
                   onClick={() => handleViewDetails(order)}
                 >
-                  View Details
+                  {order.type === 'knowledge-panel' ? 'View Report' : 'View Details'}
                 </Button>
               </div>
             </Card>

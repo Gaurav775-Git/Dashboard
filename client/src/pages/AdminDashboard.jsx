@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { getAdminAllOrders, updateGoogleIndexingStatus } from '../api/indexingApi'
 import { submitChatGptToTrueRanker } from '../api/chatgptApi'
-import { submitGeminiToTrueRanker } from '../api/geminiApi' // 👈 Import Gemini API
+import { submitGeminiToTrueRanker } from '../api/geminiApi'
+import { submitKnowledgePanelReport } from '../api/knowledgePanelApi' // 👈 New Import
 import { api } from '../lib/api'
 
 const statusColors = {
@@ -28,6 +29,15 @@ const AdminDashboard = () => {
   const [trProjectId, setTrProjectId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  
+  // 👇 Knowledge Panel State
+  const [kpData, setKpData] = useState({
+    kgid_generated: false,
+    kgid_url: '',
+    bio_links_count: 0,
+    news_articles_count: 0,
+    wiki_articles_count: 0
+  })
 
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true)
@@ -56,6 +66,9 @@ const AdminDashboard = () => {
       } else if (selectedOrder.type === 'gemini') {
         if (!trProjectId.trim()) throw new Error('TrueRanker Project ID is required')
         await submitGeminiToTrueRanker(selectedOrder.orderId, trProjectId)
+      } else if (selectedOrder.type === 'knowledge-panel') {
+        // 👇 Submit Knowledge Panel Data
+        await submitKnowledgePanelReport(selectedOrder.orderId, kpData)
       } else if (selectedOrder.type === 'indexing') {
         const engine = selectedOrder.engine || 'google';
         await updateGoogleIndexingStatus(selectedOrder.id, 'processing', engine)
@@ -200,11 +213,18 @@ const AdminDashboard = () => {
                             ? (order.urls?.[0] || 'No URLs')
                             : (order.type === 'chatgpt' || order.type === 'gemini')
                             ? (order.website || 'No Website')
+                            : order.type === 'knowledge-panel'
+                            ? (order.target_entity || 'No Entity')
                             : (order.keywords?.[0] || 'No Keywords')}
                         </div>
                         {(order.type === 'chatgpt' || order.type === 'gemini') && (
                           <div className="mt-1 text-xs text-emerald-400">
                             {order.prompts?.length || 0} Prompts
+                          </div>
+                        )}
+                        {order.type === 'knowledge-panel' && (
+                          <div className="mt-1 text-xs text-blue-400">
+                            Knowledge Panel Entity
                           </div>
                         )}
                         {order.type === 'indexing' && (
@@ -270,7 +290,7 @@ const AdminDashboard = () => {
                 <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm">
                   <div>
                     <span className="mb-1 block text-xs text-slate-400">
-                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini' ? 'Tracked Prompts' : 'Target Keywords'}
+                      {selectedOrder.type === 'indexing' ? 'Target URLs' : selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini' ? 'Tracked Prompts' : selectedOrder.type === 'knowledge-panel' ? 'Target Entity' : 'Target Keywords'}
                     </span>
                     <div className="space-y-1">
                       {selectedOrder.type === 'indexing' 
@@ -281,6 +301,8 @@ const AdminDashboard = () => {
                         ? selectedOrder.prompts?.map((prompt, i) => (
                             <div key={i} className="block truncate text-indigo-400">"{prompt}"</div>
                           ))
+                        : selectedOrder.type === 'knowledge-panel'
+                        ? <div className="text-slate-200">{selectedOrder.target_entity}</div>
                         : selectedOrder.keywords?.map((kw, i) => (
                             <div key={i} className="block truncate text-indigo-400">{kw}</div>
                           ))
@@ -288,8 +310,8 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="pt-2">
-                    <span className="mb-1 block text-xs text-slate-400">Website</span>
-                    <span className="text-slate-200">{selectedOrder.website || '—'}</span>
+                    <span className="mb-1 block text-xs text-slate-400">Website / Target</span>
+                    <span className="text-slate-200">{selectedOrder.website || selectedOrder.target_entity || '—'}</span>
                   </div>
                 </div>
               </div>
@@ -323,6 +345,33 @@ const AdminDashboard = () => {
                       </div>
                     )}
 
+                    {selectedOrder.type === 'knowledge-panel' && (
+                      <div className="space-y-4 mb-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Bio Links Created</label>
+                          <input type="number" min="0" value={kpData.bio_links_count} onChange={(e) => setKpData({...kpData, bio_links_count: Number(e.target.value)})} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">News Articles Published</label>
+                          <input type="number" min="0" value={kpData.news_articles_count} onChange={(e) => setKpData({...kpData, news_articles_count: Number(e.target.value)})} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Wiki Articles Created</label>
+                          <input type="number" min="0" value={kpData.wiki_articles_count} onChange={(e) => setKpData({...kpData, wiki_articles_count: Number(e.target.value)})} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
+                        </div>
+                        <div className="flex items-center gap-3 pt-2">
+                          <input type="checkbox" checked={kpData.kgid_generated} onChange={(e) => setKpData({...kpData, kgid_generated: e.target.checked})} className="w-4 h-4 accent-emerald-500" />
+                          <label className="text-xs text-slate-300">Knowledge Graph ID Generated?</label>
+                        </div>
+                        {kpData.kgid_generated && (
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">KGID URL</label>
+                            <input type="text" value={kpData.kgid_url} onChange={(e) => setKpData({...kpData, kgid_url: e.target.value})} placeholder="https://google.com/search?q=..." className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {selectedOrder.type === 'indexing' && (
                       <p className="text-xs text-slate-400 mb-3">Ready to submit to Rapid Indexer?</p>
                     )}
@@ -338,9 +387,7 @@ const AdminDashboard = () => {
                       disabled={isSubmitting}
                       className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
                     >
-                      {isSubmitting 
-                        ? 'Submitting...' 
-                        : `Submit to ${(selectedOrder.type === 'chatgpt' || selectedOrder.type === 'gemini') ? 'TrueRanker' : selectedOrder.type === 'indexing' ? 'Indexer' : 'Ranking API'}`}
+                      {isSubmitting ? 'Submitting...' : `Save Data & Calculate Score`}
                     </button>
                   </div>
                 )}

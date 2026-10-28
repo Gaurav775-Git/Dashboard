@@ -26,12 +26,19 @@ const {
   submitChatGptToTrueRanker 
 } = require('../controllers/chatgpt.controller');
 
-// Gemini Controller (NEW)
+// Gemini Controller
 const { 
   createGeminiOrder, 
   getGeminiTracking, 
   submitGeminiToTrueRanker 
 } = require('../controllers/gemini.controller');
+
+// 👇 Knowledge Panel Controller
+const { 
+  createKnowledgePanelOrder, 
+  submitKnowledgePanelReport, 
+  getKnowledgePanelReport 
+} = require('../controllers/knowledgePanel.controller');
 
 
 // ==========================================
@@ -48,19 +55,12 @@ router.post('/google-ranking', protect, createRankingOrder);
 // Payments
 // ==========================================
 router.post('/payments/create-intent', createPaymentIntent);
-
-// Paystack Routes
 router.post('/payments/paystack/initialize', protect, createPaystackSession);
 router.get('/payments/paystack/verify/:reference', protect, verifyPaystackPayment);
-
-// Flutterwave Routes
 router.post('/payments/flutterwave/initialize', protect, createFlutterwaveSession);
 router.get('/payments/flutterwave/verify/:transactionId', protect, verifyFlutterwavePayment);
-
-// Cryptomus Routes
 router.post('/payments/cryptomus/initialize', protect, createCryptomusSession);
 router.post('/payments/cryptomus/webhook', handleCryptomusWebhook);
-
 router.get('/performance/stats', protect, getPerformanceStats);
 
 
@@ -70,7 +70,6 @@ router.get('/performance/stats', protect, getPerformanceStats);
 router.route('/google-indexing')
   .post(protect, createIndexingOrder)
   .get(protect, getIndexingOrders);
-
 router.patch('/google-indexing/:id/status', protect, updateOrderStatus); 
 
 
@@ -83,7 +82,7 @@ router.post('/admin/chatgpt/:orderId/submit', submitChatGptToTrueRanker);
 
 
 // ==========================================
-// Gemini Routes (NEW)
+// Gemini Routes
 // ==========================================
 router.post('/gemini-order', protect, createGeminiOrder);
 router.get('/gemini-tracking/:orderId', protect, getGeminiTracking);
@@ -91,15 +90,23 @@ router.post('/admin/gemini/:orderId/submit', submitGeminiToTrueRanker);
 
 
 // ==========================================
-// Admin All Orders (UPDATED with Gemini)
+// Knowledge Panel Routes
+// ==========================================
+router.post('/knowledge-panel-order', protect, createKnowledgePanelOrder);
+router.get('/knowledge-panel-tracking/:orderId', protect, getKnowledgePanelReport);
+router.post('/admin/knowledge-panel/:orderId/submit-report', submitKnowledgePanelReport);
+
+
+// ==========================================
+// Admin All Orders
 // ==========================================
 router.get('/admin/all-orders', async (req, res) => {
   try {
     const [indexing] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'indexing' as type FROM google_indexing_orders o LEFT JOIN users u ON o.user_id = u.id`);
     const [ranking] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'ranking' as type FROM ranking_orders o LEFT JOIN users u ON o.user_id = u.id`);
     const [chatgpt] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'chatgpt' as type FROM chatgpt_orders o LEFT JOIN users u ON o.user_id = u.id`);
-    // 👇 Gemini Query
     const [gemini] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'gemini' as type FROM gemini_orders o LEFT JOIN users u ON o.user_id = u.id`);
+    const [kp] = await pool.query(`SELECT o.*, u.name AS user_name, u.email AS user_email, 'knowledge-panel' as type FROM knowledge_panel_orders o LEFT JOIN users u ON o.user_id = u.id`);
 
     const formattedIndexing = indexing.map(row => ({
       ...row, urls: typeof row.urls === 'string' ? JSON.parse(row.urls) : row.urls,
@@ -119,15 +126,20 @@ router.get('/admin/all-orders', async (req, res) => {
       createdAt: row.created_at, projectName: 'ChatGPT Visibility'
     }));
 
-    // 👇 Format Gemini
     const formattedGemini = gemini.map(row => ({
       ...row, prompts: typeof row.prompts === 'string' ? JSON.parse(row.prompts) : row.prompts,
       userId: { _id: row.user_id, name: row.user_name || 'Guest', email: row.user_email || 'No email' },
       createdAt: row.created_at, projectName: 'Gemini Visibility'
     }));
 
-    // Combine all 4 arrays
-    const allOrders = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const formattedKP = kp.map(row => ({
+      ...row, 
+      bio_links: typeof row.bio_links === 'string' ? JSON.parse(row.bio_links) : row.bio_links,
+      userId: { _id: row.user_id, name: row.user_name || 'Guest', email: row.user_email || 'No email' },
+      createdAt: row.created_at, projectName: 'Knowledge Panel'
+    }));
+
+    const allOrders = [...formattedIndexing, ...formattedRanking, ...formattedChatgpt, ...formattedGemini, ...formattedKP].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({ success: true, count: allOrders.length, data: allOrders });
   } catch (error) {
